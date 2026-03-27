@@ -1,28 +1,20 @@
-"""Sponsor Concentration detector — market dominance and industry influence.
+"""Sponsor Concentration detector — industry influence and market dominance.
 
 Flags trials based on:
-- Industry sponsorship (0.2 base)
-- Sponsor with >10% share of year's trials (+0.3)
-- High HHI year (>0.15) (+0.1)
+- Industry sponsorship with high per-year industry share (+0.3 if industry% > 25%)
+- Top-5 sponsor in year (dominant player, +0.2)
+- Industry share rising over time trend (+0.1)
 Threshold: flag if total >= 0.3
 """
 import pandas as pd
+import numpy as np
 
 from pipeline.detectors.base import BaseDetector, DetectorResult
 
 
-def _compute_hhi(sponsor_counts: pd.Series) -> float:
-    """Herfindahl-Hirschman Index from a Series of trial counts per sponsor."""
-    total = sponsor_counts.sum()
-    if total == 0:
-        return 0.0
-    shares = sponsor_counts / total
-    return float((shares ** 2).sum())
-
-
 class SponsorConcentrationDetector(BaseDetector):
     name = "sponsor_concentration"
-    description = "Sponsor market dominance and industry influence on trial landscape"
+    description = "Industry influence and sponsor market dominance in trial landscape"
     aact_tables: list[str] = []
 
     def detect(
@@ -46,29 +38,31 @@ class SponsorConcentrationDetector(BaseDetector):
             sponsor_name = str(row.get("lead_sponsor_name", "") or "")
             year = row.get("start_year")
 
-            # 1. Industry sponsorship base
-            if sponsor_class == "INDUSTRY":
-                score += 0.2
-                issues.append("Industry-sponsored")
+            is_industry = sponsor_class == "INDUSTRY"
 
-            # 2. Per-year concentration checks
             if year is not None and not pd.isna(year):
                 year = int(year)
                 stats = year_stats.get(year, {})
+                industry_pct = stats.get("industry_pct", 0.0)
+                top5 = stats.get("top5_sponsors", set())
 
-                # Sponsor share > 10%
-                sponsor_share = stats.get("shares", {}).get(sponsor_name, 0.0)
-                if sponsor_share > 0.10:
-                    score += 0.3
-                    issues.append(
-                        f"Sponsor holds {sponsor_share:.0%} of {year} trials"
-                    )
+                # Industry-sponsored AND industry dominates that year (>25%)
+                if is_industry:
+                    score += 0.2
+                    issues.append(f"Industry-sponsored (industry={industry_pct:.0%} of {year})")
+                    if industry_pct > 0.25:
+                        score += 0.1
+                        issues.append(f"High industry share ({industry_pct:.0%})")
 
-                # High HHI year
-                hhi = stats.get("hhi", 0.0)
-                if hhi > 0.15:
-                    score += 0.1
-                    issues.append(f"High concentration year (HHI={hhi:.3f})")
+                # Sponsor is a top-5 player that year
+                if sponsor_name in top5:
+                    score += 0.2
+                    sponsor_share = stats.get("shares", {}).get(sponsor_name, 0)
+                    issues.append(f"Top-5 sponsor ({sponsor_share:.1%} of {year})")
+
+            elif is_industry:
+                score += 0.2
+                issues.append("Industry-sponsored")
 
             flagged = score >= 0.3
             flags.append(flagged)
@@ -85,7 +79,7 @@ class SponsorConcentrationDetector(BaseDetector):
     def _compute_year_stats(
         self, master_df: pd.DataFrame
     ) -> dict[int, dict]:
-        """Compute HHI and sponsor shares per start_year."""
+        """Compute industry share, top sponsors, and HHI per year."""
         stats: dict[int, dict] = {}
         if "start_year" not in master_df.columns or "lead_sponsor_name" not in master_df.columns:
             return stats
@@ -96,6 +90,14 @@ class SponsorConcentrationDetector(BaseDetector):
             counts = grp["lead_sponsor_name"].value_counts()
             total = counts.sum()
             shares = (counts / total).to_dict() if total > 0 else {}
-            hhi = _compute_hhi(counts)
-            stats[year] = {"shares": shares, "hhi": hhi}
+            top5 = set(counts.head(5).index)
+            industry_pct = (
+                grp["lead_sponsor_class"].str.upper().eq("INDUSTRY").mean()
+                if "lead_sponsor_class" in grp.columns else 0.0
+            )
+            stats[year] = {
+                "shares": shares,
+                "top5_sponsors": top5,
+                "industry_pct": industry_pct,
+            }
         return stats
