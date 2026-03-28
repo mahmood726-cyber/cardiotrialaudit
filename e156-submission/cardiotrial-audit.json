@@ -1,0 +1,33 @@
+{
+  "title": "Structural Flaw Prevalence in 52,765 Cardiology Trials: An Automated Registry Audit",
+  "body": "Among 52,765 cardiology trials on ClinicalTrials.gov from 2005 to 2026, what is the prevalence of structural design flaws detectable by automated registry auditing? We applied ten rule-based detectors to the AACT February 2026 snapshot, screening protocol fields, posting dates, eligibility criteria, endpoint types, and comparator arms. The primary estimand was detector-specific structural flaw prevalence. Ghost protocols that never posted results affected 61.7% of trials, 53.5% exceeded the twelve-month reporting deadline, 25.2% showed population distortion, 18.8% used surrogate-only endpoints, and 9.9% employed placebo despite existing standard of care, yielding 1.81 flaws per trial. Ghost rates peaked at 79% in 2014-2015 then declined, results delay improved from 80% to 40% between 2008 and 2022, and endpoint softening fell from 26% to 16%. Nearly two thirds of registered cardiology trials carry at least one structural flaw detectable by automated screening before peer review. This analysis covers registered metadata and cannot detect unreported amendments, selective reporting, or trials outside ClinicalTrials.gov.",
+  "sentences": [
+    {"role": "Question", "text": "Among 52,765 cardiology trials on ClinicalTrials.gov from 2005 to 2026, what is the prevalence of structural design flaws detectable by automated registry auditing?"},
+    {"role": "Dataset", "text": "We applied ten rule-based detectors to the AACT February 2026 snapshot, screening protocol fields, posting dates, eligibility criteria, endpoint types, and comparator arms."},
+    {"role": "Method", "text": "The primary estimand was detector-specific structural flaw prevalence."},
+    {"role": "Primary result", "text": "Ghost protocols that never posted results affected 61.7% of trials, 53.5% exceeded the twelve-month reporting deadline, 25.2% showed population distortion, 18.8% used surrogate-only endpoints, and 9.9% employed placebo despite existing standard of care, yielding 1.81 flaws per trial."},
+    {"role": "Robustness", "text": "Ghost rates peaked at 79% in 2014-2015 then declined, results delay improved from 80% to 40% between 2008 and 2022, and endpoint softening fell from 26% to 16%."},
+    {"role": "Interpretation", "text": "Nearly two thirds of registered cardiology trials carry at least one structural flaw detectable by automated screening before peer review."},
+    {"role": "Boundary", "text": "This analysis covers registered metadata and cannot detect unreported amendments, selective reporting, or trials outside ClinicalTrials.gov."}
+  ],
+  "wordCount": 156,
+  "sentenceCount": 7,
+  "outsideNote": {
+    "type": "Cross-sectional registry analysis",
+    "primaryEstimand": "Structural flaw prevalence rate per detector",
+    "app": "CardioTrialAudit Dashboard v1.0",
+    "data": "AACT ClinicalTrials.gov export (Feb 2026), 52,765 cardiology trials",
+    "code": "C:\\Models\\CardioTrialAudit\\",
+    "doi": "",
+    "version": "1.0",
+    "date": "2026-03-28",
+    "certainty": "Moderate — AACT snapshot is comprehensive but design_outcomes reflects current registration only",
+    "validation": "162/162 tests, 5-persona code review CLEAN",
+    "protocol": "C:\\Models\\CardioTrialAudit\\e156-submission\\protocol.md"
+  },
+  "meta": {
+    "created": "2026-03-28",
+    "valid": true,
+    "schemaVersion": "0.2"
+  }
+}
