@@ -34,6 +34,8 @@ _HARD_PATTERNS = re.compile(
     r"|mace|major.adverse.cardiovascular"
     r"|cardiac.arrest|sudden.cardiac.death"
     r"|stent.thrombosis|revascularization"
+    r"|urgent.?(?:heart failure|hf).?visit|worsening.?heart.?failure"
+    r"|cardiovascular.?hospitalization"
     r")\b"
 )
 
@@ -54,6 +56,8 @@ _SURROGATE_PATTERNS = re.compile(
     r"|infarct.size"
     r"|6.?minute.walk|6mwd|6mwt"
     r"|nyha|functional.class"
+    r"|uacr|albumin.to.creatinine|galectin|sst2"
+    r"|cardiac.?(?:mri|magnetic)|t1.?mapping|ecv"
     r")\b"
 )
 
@@ -85,7 +89,7 @@ def classify_endpoint(title: str) -> str:
 class EndpointSofteningDetector(BaseDetector):
     name = "endpoint_softening"
     description = "Primary endpoints are all-surrogate or exclude hard clinical outcomes"
-    aact_tables = ["outcomes"]
+    aact_tables = ("outcomes",)
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None

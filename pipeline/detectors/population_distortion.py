@@ -68,7 +68,7 @@ def _get_primary_subdomain(cv_subdomains) -> str:
 class PopulationDistortionDetector(BaseDetector):
     name = "population_distortion"
     description = "Overly restrictive eligibility excluding real-world patients"
-    aact_tables: list[str] = []
+    aact_tables: tuple[str, ...] = ()
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None

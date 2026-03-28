@@ -1902,7 +1902,7 @@ function renderGeographicTab() {
         borderRadius: 4
       }, {
         label: 'Mean Severity',
-        data: binned.map(function(b) { return (b.geographic_shifts_mean_severity || 0) * 100; }),
+        data: binned.map(function(b) { return (b.geographic_shifts_severity_when_detected || 0) * 100; }),
         backgroundColor: '#4da6ffaa',
         borderColor: '#4da6ff',
         borderWidth: 1,

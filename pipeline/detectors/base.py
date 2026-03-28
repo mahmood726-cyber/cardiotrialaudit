@@ -1,8 +1,11 @@
 """Base class and result container for all flaw detectors."""
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # Snapshot date of the AACT data used by all time-dependent detectors.
 # All detectors should import this instead of defining their own _NOW.
@@ -42,7 +45,34 @@ class BaseDetector(ABC):
 
     name: str = ""
     description: str = ""
-    aact_tables: list[str] = []
+    aact_tables: tuple[str, ...] = ()
+
+    def _load_table(
+        self, table_name: str, raw_tables: dict | None, usecols: list[str] | None = None
+    ) -> pd.DataFrame | None:
+        """Load an AACT table from raw_tables dict or from disk via ingest.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the AACT table (e.g. 'outcomes', 'facilities').
+        raw_tables : dict | None
+            Pre-loaded tables dict, or None to load from disk.
+        usecols : list[str] | None
+            Columns to select when loading from disk.
+
+        Returns
+        -------
+        pd.DataFrame | None
+            The table, or None if unavailable.
+        """
+        if raw_tables is not None:
+            return raw_tables.get(table_name)
+        try:
+            from pipeline.ingest import load_aact_table
+            return load_aact_table(table_name, usecols=usecols)
+        except (KeyError, FileNotFoundError):
+            return None
 
     @abstractmethod
     def detect(

@@ -36,7 +36,7 @@ class TestYearlyTrendsShape:
         assert "mean_flaw_count" in trends.columns
         for name in DETECTOR_NAMES:
             assert f"{name}_rate" in trends.columns
-            assert f"{name}_mean_severity" in trends.columns
+            assert f"{name}_severity_when_detected" in trends.columns
 
     def test_correct_number_of_years(self):
         df = _make_trend_df(n_years=5, base_year=2015)

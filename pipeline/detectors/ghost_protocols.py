@@ -25,9 +25,16 @@ _EXTENDED_GRACE_MONTHS = 36.0
 
 
 class GhostProtocolsDetector(BaseDetector):
+    """Trials that vanish from the evidence record without results or updates.
+
+    Note: Type C overlaps with results_delay detector for COMPLETED trials with
+    no results. Both measure different constructs (evidence disappearance vs
+    regulatory non-compliance). Documented in manuscript methods.
+    """
+
     name = "ghost_protocols"
     description = "Trials that vanish from the evidence record without results or updates"
-    aact_tables = ["result_agreements"]
+    aact_tables = ("result_agreements",)
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None

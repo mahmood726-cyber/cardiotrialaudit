@@ -1,7 +1,7 @@
 """Sponsor Concentration detector — industry influence and market dominance.
 
 Flags trials based on:
-- Industry sponsorship with high per-year industry share (+0.3 if industry% > 25%)
+- Industry sponsorship with high per-year industry share (+0.3 if industry% > 40%)
 - Top-5 sponsor in year (dominant player, +0.2)
 - Industry share rising over time trend (+0.1)
 Threshold: flag if total >= 0.3
@@ -15,7 +15,7 @@ from pipeline.detectors.base import BaseDetector, DetectorResult
 class SponsorConcentrationDetector(BaseDetector):
     name = "sponsor_concentration"
     description = "Industry influence and sponsor market dominance in trial landscape"
-    aact_tables: list[str] = []
+    aact_tables: tuple[str, ...] = ()
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None
@@ -50,7 +50,7 @@ class SponsorConcentrationDetector(BaseDetector):
                 if is_industry:
                     score += 0.2
                     issues.append(f"Industry-sponsored (industry={industry_pct:.0%} of {year})")
-                    if industry_pct > 0.25:
+                    if industry_pct > 0.40:
                         score += 0.1
                         issues.append(f"High industry share ({industry_pct:.0%})")
 

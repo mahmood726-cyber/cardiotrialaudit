@@ -1,19 +1,12 @@
 """Composite flaw scoring — aggregate detector results per trial."""
+import warnings
+
 import numpy as np
 import pandas as pd
 
-DETECTOR_NAMES = [
-    "ghost_protocols",
-    "outcome_switching",
-    "population_distortion",
-    "sample_size_decay",
-    "sponsor_concentration",
-    "geographic_shifts",
-    "results_delay",
-    "endpoint_softening",
-    "comparator_manipulation",
-    "statistical_fragility",
-]
+from pipeline.detectors.runner import DETECTOR_REGISTRY
+
+DETECTOR_NAMES = list(DETECTOR_REGISTRY.keys())
 
 
 def compute_composite_scores(df: pd.DataFrame) -> pd.DataFrame:
@@ -59,7 +52,8 @@ def compute_composite_scores(df: pd.DataFrame) -> pd.DataFrame:
     det_flags = det_matrix.values
     sev_masked[~det_flags] = np.nan
 
-    with np.errstate(all="ignore"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
         mean_sev = np.nanmean(sev_masked, axis=1)
     # nanmean returns nan when all are nan (no flaws) — replace with 0
     mean_sev = np.where(np.isnan(mean_sev), 0.0, mean_sev)

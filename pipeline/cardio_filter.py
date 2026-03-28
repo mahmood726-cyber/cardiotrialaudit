@@ -80,7 +80,7 @@ _CV_DRUGS = [
     "ranolazine", "trimetazidine", "vernakalant",
 ]
 CV_INTERVENTION_PATTERNS = re.compile(
-    r"(?i)\b(" + "|".join(re.escape(d) for d in _CV_DRUGS) + r")\b"
+    r"(?i)\b(?:" + "|".join(re.escape(d) for d in _CV_DRUGS) + r")\b"
 )
 
 _CV_DEVICES = [
@@ -96,7 +96,7 @@ _CV_DEVICES = [
     "mitral clip", "mitraclip", "watchman", "left atrial appendage",
 ]
 CV_DEVICE_PATTERNS = re.compile(
-    r"(?i)\b(" + "|".join(re.escape(d) for d in _CV_DEVICES) + r")\b"
+    r"(?i)\b(?:" + "|".join(re.escape(d) for d in _CV_DEVICES) + r")\b"
 )
 
 # ── Sub-domain tagging rules ────────────────────────────────────────────
@@ -210,9 +210,10 @@ def filter_cardiology_trials(nrows_studies: int | None = None) -> pd.DataFrame:
 
     interventions = load_aact_table("interventions", usecols=["nct_id", "intervention_type", "name"])
     interventions = interventions[interventions["nct_id"].isin(nct_ids_in_window)]
-    interventions["is_cv"] = interventions.apply(
-        lambda r: is_cv_intervention(r["name"], r.get("intervention_type", "")), axis=1,
-    )
+    # P2-11: Vectorized intervention matching (replaces row-wise apply)
+    name_match = interventions["name"].str.contains(CV_INTERVENTION_PATTERNS, na=False)
+    device_match = interventions["name"].str.contains(CV_DEVICE_PATTERNS, na=False)
+    interventions["is_cv"] = name_match | device_match
     cv_by_intervention = set(interventions[interventions["is_cv"]]["nct_id"].unique())
 
     # P0-1: Final set — CKD-only trials require a CV intervention co-match

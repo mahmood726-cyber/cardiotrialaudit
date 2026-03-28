@@ -29,7 +29,7 @@ _FINAL_RULE_START = pd.Timestamp("2017-01-01")  # Final Rule effective Jan 2017
 class ResultsDelayDetector(BaseDetector):
     name = "results_delay"
     description = "Excessive delay between trial completion and results posting"
-    aact_tables: list[str] = []
+    aact_tables: tuple[str, ...] = ()
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None

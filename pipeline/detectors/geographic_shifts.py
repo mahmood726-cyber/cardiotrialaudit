@@ -35,7 +35,7 @@ _HIGH_INCOME_COUNTRIES = frozenset({
 class GeographicShiftsDetector(BaseDetector):
     name = "geographic_shifts"
     description = "Trials with disproportionate enrollment from LMIC sites"
-    aact_tables = ["facilities"]
+    aact_tables = ("facilities",)
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None

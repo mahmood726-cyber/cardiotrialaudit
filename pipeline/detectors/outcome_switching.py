@@ -36,7 +36,7 @@ def _fuzzy_best_match(query: str, candidates: list[str]) -> float:
 class OutcomeSwitchingDetector(BaseDetector):
     name = "outcome_switching"
     description = "Registered vs reported primary outcomes do not match"
-    aact_tables = ["design_outcomes", "outcomes"]
+    aact_tables = ("design_outcomes", "outcomes")
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None
@@ -140,17 +140,7 @@ class OutcomeSwitchingDetector(BaseDetector):
             detail=details,
         )
 
-    def _load_table(
-        self, table_name: str, raw_tables: dict | None
-    ) -> pd.DataFrame | None:
-        if raw_tables is not None:
-            return raw_tables.get(table_name)
-        try:
-            from pipeline.ingest import load_aact_table
-            return load_aact_table(table_name)
-        except (KeyError, FileNotFoundError) as e:
-            logger.warning("Could not load %s: %s", table_name, e)
-            return None
+    # _load_table inherited from BaseDetector
 
     def _empty_result(self, master_df: pd.DataFrame) -> DetectorResult:
         n = len(master_df)

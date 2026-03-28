@@ -104,10 +104,10 @@ def _fi_to_severity(fi: int | None) -> float:
 class StatisticalFragilityDetector(BaseDetector):
     name = "statistical_fragility"
     description = "Trial results that would change with very few event reassignments"
-    aact_tables = [
+    aact_tables = (
         "outcome_counts", "outcomes", "result_groups",
         "outcome_measurements", "baseline_measurements", "reported_events",
-    ]
+    )
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None
@@ -193,25 +193,25 @@ class StatisticalFragilityDetector(BaseDetector):
 
         # Load result_groups
         rg = self._load_table("result_groups", raw_tables,
-                              cols=["nct_id", "ctgov_group_code", "title", "description"])
+                              usecols=["nct_id", "ctgov_group_code", "title", "description"])
         if rg is None or rg.empty:
             return result
 
         # Load outcome_measurements
         om = self._load_table("outcome_measurements", raw_tables,
-                              cols=["nct_id", "outcome_id", "ctgov_group_code",
+                              usecols=["nct_id", "outcome_id", "ctgov_group_code",
                                     "param_type", "param_value_num"])
         if om is None or om.empty:
             return result
 
         # Load baseline_measurements for arm sizes
         bm = self._load_table("baseline_measurements", raw_tables,
-                              cols=["nct_id", "ctgov_group_code", "title",
+                              usecols=["nct_id", "ctgov_group_code", "title",
                                     "param_type", "param_value_num"])
 
         # Load reported_events as fallback for arm sizes
         re_df = self._load_table("reported_events", raw_tables,
-                                 cols=["nct_id", "ctgov_group_code",
+                                 usecols=["nct_id", "ctgov_group_code",
                                        "subjects_at_risk"])
 
         # Filter to our trials
@@ -332,7 +332,7 @@ class StatisticalFragilityDetector(BaseDetector):
     ) -> dict[str, dict]:
         """Fallback: extract 2x2 from outcome_counts (original method)."""
         oc = self._load_table("outcome_counts", raw_tables,
-                              cols=None)  # load all columns
+                              usecols=None)  # load all columns
         if oc is None or oc.empty:
             return {}
 
@@ -385,23 +385,4 @@ class StatisticalFragilityDetector(BaseDetector):
 
         return result
 
-    def _load_table(
-        self, table_name: str, raw_tables: dict | None,
-        cols: list[str] | None = None,
-    ) -> pd.DataFrame | None:
-        """Load an AACT table from raw_tables or disk."""
-        try:
-            if raw_tables is not None:
-                df = raw_tables.get(table_name)
-                if df is None:
-                    return None
-                return df
-            else:
-                from pipeline.ingest import load_aact_table
-                kwargs = {}
-                if cols:
-                    kwargs["usecols"] = cols
-                return load_aact_table(table_name, **kwargs)
-        except (KeyError, FileNotFoundError) as e:
-            logger.debug("Could not load %s: %s", table_name, e)
-            return None
+    # _load_table inherited from BaseDetector

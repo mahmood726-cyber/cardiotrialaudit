@@ -37,7 +37,7 @@ def compute_yearly_trends(
     pd.DataFrame
         One row per year with columns:
         - year, n_trials
-        - {name}_rate (fraction detected), {name}_mean_severity
+        - {name}_rate, {name}_severity_when_detected (mean severity among detected)
         - composite_mean, mean_flaw_count
         - {name}_eligible_n (if maturity_filter=True, for time-dependent detectors)
     """
@@ -68,7 +68,7 @@ def compute_yearly_trends(
         col_det = f"{name}_detected"
         col_sev = f"{name}_severity"
         agg_dict[f"{name}_rate"] = (col_det, "mean")
-        agg_dict[f"{name}_mean_severity"] = (col_sev, "mean")
+        agg_dict[f"{name}_severity_when_detected"] = (col_sev, "mean")
 
     if "composite_severity" in work.columns:
         agg_dict["composite_mean"] = ("composite_severity", "mean")
@@ -133,7 +133,8 @@ def compute_binned_trends(
     def _year_to_bin(y):
         bin_start = min_year + ((y - min_year) // bin_size) * bin_size
         bin_end = min(bin_start + bin_size - 1, max_year)
-        return f"{bin_start}-{bin_end}"
+        label = str(int(bin_start)) if bin_start == bin_end else f"{int(bin_start)}-{int(bin_end)}"
+        return label
 
     work["year_bin"] = work["start_year"].apply(_year_to_bin)
 
@@ -155,7 +156,7 @@ def compute_binned_trends(
         col_det = f"{name}_detected"
         col_sev = f"{name}_severity"
         agg_dict[f"{name}_rate"] = (col_det, "mean")
-        agg_dict[f"{name}_mean_severity"] = (col_sev, "mean")
+        agg_dict[f"{name}_severity_when_detected"] = (col_sev, "mean")
 
     if "composite_severity" in work.columns:
         agg_dict["composite_mean"] = ("composite_severity", "mean")

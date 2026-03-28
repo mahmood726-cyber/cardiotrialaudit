@@ -34,7 +34,7 @@ _SOC_COMPARATOR_PATTERN = re.compile(
 class ComparatorManipulationDetector(BaseDetector):
     name = "comparator_manipulation"
     description = "Placebo-controlled design when standard-of-care exists for the condition"
-    aact_tables = ["interventions", "design_groups"]
+    aact_tables = ("interventions", "design_groups")
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None

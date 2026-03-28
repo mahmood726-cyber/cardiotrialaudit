@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class SampleSizeDecayDetector(BaseDetector):
     name = "sample_size_decay"
     description = "Enrollment shortfalls, early termination, or excessive attrition"
-    aact_tables = ["drop_withdrawals"]
+    aact_tables = ("drop_withdrawals",)
 
     def detect(
         self, master_df: pd.DataFrame, raw_tables: dict | None = None
