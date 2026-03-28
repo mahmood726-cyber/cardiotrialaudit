@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CardioTrialAudit Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <style>
 /* ===== CSS Reset + Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,7 +17,7 @@
   --bg-hover: #263354;
   --text-primary: #e8ecf4;
   --text-secondary: #a0aec0;
-  --text-muted: #718096;
+  --text-muted: #8a9bb5;
   --accent-blue: #4da6ff;
   --accent-green: #48bb78;
   --accent-red: #fc8181;
@@ -489,15 +489,31 @@ a:hover { text-decoration: underline; }
   margin-top: 0.5rem;
   font-style: italic;
 }
+
+/* ===== Accessibility: sr-only ===== */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+
+/* ===== P1-15: Explorer row focus-visible ===== */
+.data-table tr[data-idx]:focus-visible,
+.data-table th[data-sort]:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+}
 </style>
 </head>
 <body>
 
+<!-- Skip to content -->
+<a href="#main-content" class="sr-only" style="position:absolute;top:-40px;left:0;z-index:10000;background:var(--bg-card);color:var(--text-primary);padding:8px 16px;border-radius:4px;" onfocus="this.style.top='8px'" onblur="this.style.top='-40px'">Skip to content</a>
+
 <!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay">
+<div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
   <div class="spinner"></div>
   <div class="loading-text">Loading CardioTrialAudit data...</div>
 </div>
+
+<!-- Live announce region for dynamic content -->
+<div id="liveAnnounce" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
 <!-- Header -->
 <header class="app-header">
@@ -513,29 +529,30 @@ a:hover { text-decoration: underline; }
 
 <!-- Tab Navigation -->
 <nav class="tab-nav" role="tablist" aria-label="Dashboard sections">
-  <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-overview" data-tab="overview" tabindex="0">Overview</button>
-  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-trends" data-tab="trends" tabindex="-1">Trends</button>
-  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-heatmap" data-tab="heatmap" tabindex="-1">Heatmap</button>
-  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-explorer" data-tab="explorer" tabindex="-1">Trial Explorer</button>
-  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-subdomains" data-tab="subdomains" tabindex="-1">Subdomains</button>
-  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-sponsors" data-tab="sponsors" tabindex="-1">Sponsors</button>
-  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-geographic" data-tab="geographic" tabindex="-1">Geographic</button>
+  <button class="tab-btn active" id="tab-btn-overview" role="tab" aria-selected="true" aria-controls="tab-overview" data-tab="overview" tabindex="0">Overview</button>
+  <button class="tab-btn" id="tab-btn-trends" role="tab" aria-selected="false" aria-controls="tab-trends" data-tab="trends" tabindex="-1">Trends</button>
+  <button class="tab-btn" id="tab-btn-heatmap" role="tab" aria-selected="false" aria-controls="tab-heatmap" data-tab="heatmap" tabindex="-1">Heatmap</button>
+  <button class="tab-btn" id="tab-btn-explorer" role="tab" aria-selected="false" aria-controls="tab-explorer" data-tab="explorer" tabindex="-1">Trial Explorer</button>
+  <button class="tab-btn" id="tab-btn-subdomains" role="tab" aria-selected="false" aria-controls="tab-subdomains" data-tab="subdomains" tabindex="-1">Subdomains</button>
+  <button class="tab-btn" id="tab-btn-sponsors" role="tab" aria-selected="false" aria-controls="tab-sponsors" data-tab="sponsors" tabindex="-1">Sponsors</button>
+  <button class="tab-btn" id="tab-btn-geographic" role="tab" aria-selected="false" aria-controls="tab-geographic" data-tab="geographic" tabindex="-1">Geographic</button>
 </nav>
 
+<main id="main-content">
 <!-- Tab: Overview -->
-<section class="tab-content active" id="tab-overview" role="tabpanel">
+<section class="tab-content active" id="tab-overview" role="tabpanel" aria-labelledby="tab-btn-overview">
   <div class="stat-grid" id="overviewStats"></div>
   <div class="two-col">
     <div class="chart-wrap">
       <h3>Detection Rates by Flaw Type</h3>
       <div class="chart-container" style="height:400px;">
-        <canvas id="radarChart"></canvas>
+        <canvas id="radarChart" role="img" aria-label="Detection rates radar chart"></canvas>
       </div>
     </div>
     <div class="chart-wrap">
       <h3>Flaw Count Distribution</h3>
       <div class="chart-container" style="height:400px;">
-        <canvas id="flawDistChart"></canvas>
+        <canvas id="flawDistChart" role="img" aria-label="Flaw count distribution chart"></canvas>
       </div>
     </div>
   </div>
@@ -543,7 +560,7 @@ a:hover { text-decoration: underline; }
 </section>
 
 <!-- Tab: Trends -->
-<section class="tab-content" id="tab-trends" role="tabpanel">
+<section class="tab-content" id="tab-trends" role="tabpanel" aria-labelledby="tab-btn-trends">
   <div class="note-banner">
     Note: Trials started in 2024-2026 have artificially low ghost protocol and results delay rates because insufficient time has elapsed for these flaws to manifest.
   </div>
@@ -551,20 +568,20 @@ a:hover { text-decoration: underline; }
   <div class="chart-wrap">
     <h3>Flaw Prevalence Over Time (2005-2026)</h3>
     <div class="chart-container" style="height:500px;">
-      <canvas id="trendsChart"></canvas>
+      <canvas id="trendsChart" role="img" aria-label="Flaw prevalence trends over time"></canvas>
     </div>
     <div class="chart-annotation">Dashed vertical lines: 2007 FDAAA, 2017 Final Rule, 2020 COVID pandemic onset</div>
   </div>
   <div class="chart-wrap">
     <h3>Mean Flaw Count and Composite Severity Over Time</h3>
     <div class="chart-container" style="height:350px;">
-      <canvas id="compositeTrendChart"></canvas>
+      <canvas id="compositeTrendChart" role="img" aria-label="Mean flaw count and composite severity over time"></canvas>
     </div>
   </div>
 </section>
 
 <!-- Tab: Heatmap -->
-<section class="tab-content" id="tab-heatmap" role="tabpanel">
+<section class="tab-content" id="tab-heatmap" role="tabpanel" aria-labelledby="tab-btn-heatmap">
   <div class="chart-wrap">
     <h3>Detection Rate Heatmap: Year x Detector</h3>
     <div class="table-scroll">
@@ -576,7 +593,7 @@ a:hover { text-decoration: underline; }
 </section>
 
 <!-- Tab: Trial Explorer -->
-<section class="tab-content" id="tab-explorer" role="tabpanel">
+<section class="tab-content" id="tab-explorer" role="tabpanel" aria-labelledby="tab-btn-explorer">
   <div class="explorer-controls">
     <div class="filter-group">
       <label for="searchInput">Search</label>
@@ -641,11 +658,11 @@ a:hover { text-decoration: underline; }
 </section>
 
 <!-- Tab: Subdomains -->
-<section class="tab-content" id="tab-subdomains" role="tabpanel">
+<section class="tab-content" id="tab-subdomains" role="tabpanel" aria-labelledby="tab-btn-subdomains">
   <div class="chart-wrap">
     <h3>Flaw Detection Rates by CV Subdomain</h3>
     <div class="chart-container" style="height:500px;">
-      <canvas id="subdomainChart"></canvas>
+      <canvas id="subdomainChart" role="img" aria-label="Flaw detection rates by cardiovascular subdomain"></canvas>
     </div>
   </div>
   <div class="chart-wrap">
@@ -669,18 +686,18 @@ a:hover { text-decoration: underline; }
 </section>
 
 <!-- Tab: Sponsors -->
-<section class="tab-content" id="tab-sponsors" role="tabpanel">
+<section class="tab-content" id="tab-sponsors" role="tabpanel" aria-labelledby="tab-btn-sponsors">
   <div class="two-col">
     <div class="chart-wrap">
       <h3>Industry vs Academic: Flaw Profile</h3>
       <div class="chart-container" style="height:400px;">
-        <canvas id="sponsorCompareChart"></canvas>
+        <canvas id="sponsorCompareChart" role="img" aria-label="Industry vs academic flaw profile comparison"></canvas>
       </div>
     </div>
     <div class="chart-wrap">
       <h3>Sponsor Class Overview</h3>
       <div class="chart-container" style="height:400px;">
-        <canvas id="sponsorClassChart"></canvas>
+        <canvas id="sponsorClassChart" role="img" aria-label="Sponsor class overview chart"></canvas>
       </div>
     </div>
   </div>
@@ -707,11 +724,11 @@ a:hover { text-decoration: underline; }
 </section>
 
 <!-- Tab: Geographic -->
-<section class="tab-content" id="tab-geographic" role="tabpanel">
+<section class="tab-content" id="tab-geographic" role="tabpanel" aria-labelledby="tab-btn-geographic">
   <div class="chart-wrap">
     <h3>Geographic Shifts Detection Rate by Period</h3>
     <div class="chart-container" style="height:450px;">
-      <canvas id="geoBarChart"></canvas>
+      <canvas id="geoBarChart" role="img" aria-label="Geographic shifts detection rate by period"></canvas>
     </div>
     <div class="chart-annotation">Geographic shifts detector flags trials whose site distribution deviates from domain norms (e.g., disproportionate enrollment in regions with less regulatory oversight).</div>
   </div>
@@ -719,17 +736,18 @@ a:hover { text-decoration: underline; }
     <div class="chart-wrap">
       <h3>Flaw Profile by Period (3-Year Bins)</h3>
       <div class="chart-container" style="height:400px;">
-        <canvas id="geoPeriodChart"></canvas>
+        <canvas id="geoPeriodChart" role="img" aria-label="Flaw profile by period"></canvas>
       </div>
     </div>
     <div class="chart-wrap">
       <h3>Trial Volume and Mean Severity by Period</h3>
       <div class="chart-container" style="height:400px;">
-        <canvas id="geoVolumeChart"></canvas>
+        <canvas id="geoVolumeChart" role="img" aria-label="Trial volume and mean severity by period"></canvas>
       </div>
     </div>
   </div>
 </section>
+</main>
 
 <script>
 /* ===================================================================
@@ -841,7 +859,7 @@ function heatColor(rate) {
 
 function textColorForBg(rate) {
   // Returns appropriate text color for heatmap cells
-  return rate > 0.35 ? '#fff' : '#1a1a2e';
+  return rate > 0.25 ? '#fff' : '#1a1a2e';
 }
 
 function parseSubdomains(val) {
@@ -876,7 +894,7 @@ function configureChartDefaults() {
 function getDataUrl() {
   var params = new URLSearchParams(window.location.search);
   var custom = params.get('data');
-  if (custom) return custom;
+  if (custom && (custom.startsWith('./') || custom.startsWith('../'))) return custom;
   return '../data/results/dashboard.json';
 }
 
@@ -1048,6 +1066,10 @@ function renderOverviewTab() {
     }
   });
 
+  // Dynamic aria-label for radar chart
+  var radarCanvas = document.getElementById('radarChart');
+  radarCanvas.setAttribute('aria-label', 'Detection rates: ' + DETECTORS.map(function(d, i) { return DETECTOR_LABELS[d] + ' ' + radarData[i].toFixed(0) + '%'; }).join(', '));
+
   // Flaw distribution bar chart
   var distLabels = ['0', '1', '2', '3', '4', '5', '6+'];
   var distData = distLabels.map(function(_, i) { return flawDist[i] || 0; });
@@ -1086,6 +1108,10 @@ function renderOverviewTab() {
       }
     }
   });
+
+  // Dynamic aria-label for flaw distribution chart
+  var flawDistCanvas = document.getElementById('flawDistChart');
+  flawDistCanvas.setAttribute('aria-label', 'Flaw distribution: ' + distLabels.map(function(l, i) { return l + ' flaws: ' + distData[i] + ' trials'; }).join(', '));
 
   // Callout boxes
   var calloutsHtml = '';
@@ -1453,6 +1479,13 @@ function applyExplorerFilters() {
 
   sortExplorer();
   explorerPage = 0;
+
+  // Announce filter results to screen readers
+  var liveEl = document.getElementById('liveAnnounce');
+  if (liveEl) {
+    liveEl.textContent = 'Filter applied: ' + explorerFiltered.length + ' trials found';
+  }
+
   renderExplorerPage();
 }
 
@@ -1475,8 +1508,10 @@ function sortExplorer() {
 function updateSortArrows() {
   document.querySelectorAll('#explorerTable th[data-sort]').forEach(function(th) {
     var arrow = th.querySelector('.sort-arrow');
+    th.removeAttribute('aria-sort');
     if (th.dataset.sort === explorerSort.key) {
       arrow.textContent = explorerSort.dir > 0 ? ' \u25B2' : ' \u25BC';
+      th.setAttribute('aria-sort', explorerSort.dir > 0 ? 'ascending' : 'descending');
     } else {
       arrow.textContent = '';
     }
@@ -1574,6 +1609,12 @@ function renderExplorerPage() {
   document.getElementById('pagLast').addEventListener('click', function() { explorerPage = totalPages - 1; renderExplorerPage(); });
 
   updateSortArrows();
+
+  // P0-7: Announce page content to screen readers
+  var liveEl = document.getElementById('liveAnnounce');
+  if (liveEl) {
+    liveEl.textContent = 'Showing ' + (start + 1) + ' to ' + end + ' of ' + total + ' trials';
+  }
 }
 
 /* ===================================================================
