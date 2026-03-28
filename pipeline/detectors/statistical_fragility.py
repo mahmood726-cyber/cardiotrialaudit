@@ -214,23 +214,44 @@ class StatisticalFragilityDetector(BaseDetector):
                                  usecols=["nct_id", "ctgov_group_code",
                                        "subjects_at_risk"])
 
-        # Filter to our trials
-        rg = rg[rg["nct_id"].isin(nct_set)]
-        om = om[om["nct_id"].isin(nct_set)]
+        # Filter to our trials with results only
+        trials_with_results = set(
+            master_df[master_df.get("has_results", pd.Series([False]*len(master_df))) == True]["nct_id"]
+        )
+        target_ncts = nct_set & trials_with_results
+        if not target_ncts:
+            return result
 
-        # For each trial, try to build a 2x2
+        rg = rg[rg["nct_id"].isin(target_ncts)]
+        om = om[om["nct_id"].isin(target_ncts)]
         om["param_value_num"] = pd.to_numeric(om["param_value_num"], errors="coerce")
 
-        for nct in nct_set:
-            try:
-                nct_rg = rg[rg["nct_id"] == nct]
-                # Need exactly P1 and P2 groups
-                group_codes = nct_rg["ctgov_group_code"].unique()
-                if not {"P1", "P2"}.issubset(set(group_codes)):
-                    continue
+        # Pre-filter: only trials that have both P1 and P2 result groups
+        rg_groups = rg.groupby("nct_id")["ctgov_group_code"].apply(set)
+        valid_ncts = set(rg_groups[rg_groups.apply(lambda s: "P1" in s and "P2" in s)].index)
+        if not valid_ncts:
+            return result
 
-                nct_om = om[om["nct_id"] == nct]
-                if nct_om.empty:
+        om = om[om["nct_id"].isin(valid_ncts)]
+
+        # Pre-group outcome_measurements by nct_id for fast lookup
+        om_grouped = {nct: grp for nct, grp in om.groupby("nct_id")}
+
+        # Pre-group baseline and reported_events if available
+        bm_grouped = {}
+        if bm is not None and not bm.empty:
+            bm = bm[bm["nct_id"].isin(valid_ncts)]
+            bm_grouped = {nct: grp for nct, grp in bm.groupby("nct_id")}
+
+        re_grouped = {}
+        if re_df is not None and not re_df.empty:
+            re_df = re_df[re_df["nct_id"].isin(valid_ncts)]
+            re_grouped = {nct: grp for nct, grp in re_df.groupby("nct_id")}
+
+        for nct in valid_ncts:
+            try:
+                nct_om = om_grouped.get(nct)
+                if nct_om is None or nct_om.empty:
                     continue
 
                 # Get first outcome's data as proxy for primary
@@ -254,14 +275,13 @@ class StatisticalFragilityDetector(BaseDetector):
                 events_a = int(events_a)
                 events_b = int(events_b)
 
-                # Get arm sizes — try baseline_measurements first
-                total_a, total_b = self._get_arm_sizes(
-                    nct, bm, re_df
+                # Get arm sizes from pre-grouped data
+                total_a, total_b = self._get_arm_sizes_grouped(
+                    nct, bm_grouped, re_grouped
                 )
                 if total_a is None or total_b is None:
                     continue
 
-                # Sanity check
                 if (total_a > 0 and total_b > 0
                         and 0 <= events_a <= total_a
                         and 0 <= events_b <= total_b):
@@ -276,53 +296,44 @@ class StatisticalFragilityDetector(BaseDetector):
 
         return result
 
-    def _get_arm_sizes(
+    def _get_arm_sizes_grouped(
         self, nct: str,
-        bm: pd.DataFrame | None,
-        re_df: pd.DataFrame | None,
+        bm_grouped: dict,
+        re_grouped: dict,
     ) -> tuple[int | None, int | None]:
-        """Get arm sizes (N per arm) from baseline or reported_events.
-
-        Tries:
-        1. baseline_measurements with title containing "Number Analyzed" or
-           "Overall Number of Participants"
-        2. reported_events subjects_at_risk (max per group)
-        """
+        """Get arm sizes from pre-grouped baseline or reported_events data."""
         # Try baseline_measurements
-        if bm is not None and not bm.empty:
-            nct_bm = bm[bm["nct_id"] == nct]
-            if not nct_bm.empty:
-                # Look for participant count rows
-                analyzer_mask = nct_bm["title"].fillna("").str.contains(
-                    r"(?i)(number\s*(of\s*)?(analyz|participant|enroll|baseline))",
-                    regex=True
+        nct_bm = bm_grouped.get(nct)
+        if nct_bm is not None and not nct_bm.empty:
+            analyzer_mask = nct_bm["title"].fillna("").str.contains(
+                r"(?i)(number\s*(of\s*)?(analyz|participant|enroll|baseline))",
+                regex=True
+            )
+            count_rows = nct_bm[analyzer_mask]
+            if not count_rows.empty:
+                count_rows = count_rows.copy()
+                count_rows["param_value_num"] = pd.to_numeric(
+                    count_rows["param_value_num"], errors="coerce"
                 )
-                count_rows = nct_bm[analyzer_mask]
-                if not count_rows.empty:
-                    count_rows = count_rows.copy()
-                    count_rows["param_value_num"] = pd.to_numeric(
-                        count_rows["param_value_num"], errors="coerce"
-                    )
-                    p1 = count_rows[count_rows["ctgov_group_code"] == "P1"]
-                    p2 = count_rows[count_rows["ctgov_group_code"] == "P2"]
-                    if not p1.empty and not p2.empty:
-                        ta = p1["param_value_num"].iloc[0]
-                        tb = p2["param_value_num"].iloc[0]
-                        if pd.notna(ta) and pd.notna(tb) and ta > 0 and tb > 0:
-                            return int(ta), int(tb)
+                p1 = count_rows[count_rows["ctgov_group_code"] == "P1"]
+                p2 = count_rows[count_rows["ctgov_group_code"] == "P2"]
+                if not p1.empty and not p2.empty:
+                    ta = p1["param_value_num"].iloc[0]
+                    tb = p2["param_value_num"].iloc[0]
+                    if pd.notna(ta) and pd.notna(tb) and ta > 0 and tb > 0:
+                        return int(ta), int(tb)
 
         # Fallback: reported_events subjects_at_risk
-        if re_df is not None and not re_df.empty:
-            nct_re = re_df[re_df["nct_id"] == nct]
-            if not nct_re.empty:
-                nct_re = nct_re.copy()
-                nct_re["subjects_at_risk"] = pd.to_numeric(
-                    nct_re["subjects_at_risk"], errors="coerce"
-                )
-                p1_sar = nct_re[nct_re["ctgov_group_code"] == "P1"]["subjects_at_risk"].max()
-                p2_sar = nct_re[nct_re["ctgov_group_code"] == "P2"]["subjects_at_risk"].max()
-                if pd.notna(p1_sar) and pd.notna(p2_sar) and p1_sar > 0 and p2_sar > 0:
-                    return int(p1_sar), int(p2_sar)
+        nct_re = re_grouped.get(nct)
+        if nct_re is not None and not nct_re.empty:
+            nct_re = nct_re.copy()
+            nct_re["subjects_at_risk"] = pd.to_numeric(
+                nct_re["subjects_at_risk"], errors="coerce"
+            )
+            p1_sar = nct_re[nct_re["ctgov_group_code"] == "P1"]["subjects_at_risk"].max()
+            p2_sar = nct_re[nct_re["ctgov_group_code"] == "P2"]["subjects_at_risk"].max()
+            if pd.notna(p1_sar) and pd.notna(p2_sar) and p1_sar > 0 and p2_sar > 0:
+                return int(p1_sar), int(p2_sar)
 
         return None, None
 

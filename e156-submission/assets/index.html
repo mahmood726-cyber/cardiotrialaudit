@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CardioTrialAudit Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<style>
+/* ===== CSS Reset + Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary: #0f1729;
+  --bg-secondary: #1a2340;
+  --bg-tertiary: #222d4a;
+  --bg-card: #1e2a47;
+  --bg-hover: #263354;
+  --text-primary: #e8ecf4;
+  --text-secondary: #a0aec0;
+  --text-muted: #8a9bb5;
+  --accent-blue: #4da6ff;
+  --accent-green: #48bb78;
+  --accent-red: #fc8181;
+  --accent-yellow: #f6e05e;
+  --accent-orange: #ed8936;
+  --accent-purple: #b794f4;
+  --accent-cyan: #76e4f7;
+  --accent-pink: #f687b3;
+  --border: #2d3a5e;
+  --shadow: rgba(0,0,0,0.3);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --transition: 0.2s ease;
+}
+
+html { font-size: 15px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+a { color: var(--accent-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ===== Layout ===== */
+.app-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.app-header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.app-header .subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.header-meta {
+  margin-left: auto;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ===== Tab Navigation ===== */
+.tab-nav {
+  display: flex;
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--border);
+  overflow-x: auto;
+  padding: 0 1rem;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: var(--transition);
+  white-space: nowrap;
+  font-family: inherit;
+}
+.tab-btn:hover { color: var(--text-secondary); background: var(--bg-hover); }
+.tab-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+}
+.tab-btn.active {
+  color: var(--accent-blue);
+  border-bottom-color: var(--accent-blue);
+}
+
+/* ===== Tab Content ===== */
+.tab-content { display: none; padding: 1.5rem 2rem; }
+.tab-content.active { display: block; }
+
+/* ===== Cards ===== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+.card-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* ===== Stat Cards Grid ===== */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  text-align: center;
+}
+.stat-card .value {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--accent-blue);
+  line-height: 1.2;
+}
+.stat-card .label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+.stat-card.warn .value { color: var(--accent-orange); }
+.stat-card.danger .value { color: var(--accent-red); }
+.stat-card.ok .value { color: var(--accent-green); }
+
+/* ===== Chart Containers ===== */
+.chart-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+.chart-wrap h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+
+/* ===== Two-Column Layout ===== */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 900px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+/* ===== Callout Boxes ===== */
+.callout {
+  background: var(--bg-tertiary);
+  border-left: 4px solid var(--accent-blue);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+.callout.warn { border-left-color: var(--accent-orange); }
+.callout.danger { border-left-color: var(--accent-red); }
+.callout strong { color: var(--text-primary); }
+.callout p { color: var(--text-secondary); margin-top: 0.25rem; }
+
+/* ===== Heatmap ===== */
+.heatmap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.heatmap-table th, .heatmap-table td {
+  padding: 0.5rem 0.4rem;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.heatmap-table th {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.heatmap-table td {
+  font-weight: 600;
+  font-size: 0.8rem;
+  min-width: 60px;
+}
+.heatmap-table td.row-label {
+  text-align: left;
+  font-weight: 500;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+/* ===== Trial Explorer Table ===== */
+.explorer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  align-items: flex-end;
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.filter-group label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.filter-input, .filter-select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+.filter-input:focus, .filter-select:focus {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -1px;
+}
+.filter-input { min-width: 200px; }
+.filter-select { min-width: 120px; }
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.data-table th {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.6rem 0.5rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.data-table th:hover { color: var(--text-primary); }
+.data-table th .sort-arrow { margin-left: 0.25rem; font-size: 0.7rem; }
+.data-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.data-table tr:hover td { background: var(--bg-hover); }
+.data-table tr.expanded td { background: var(--bg-tertiary); }
+
+.trial-detail {
+  display: none;
+  padding: 0.75rem 1rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+}
+.trial-detail.open { display: table-row; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+.detail-item {
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+.detail-item .det-name {
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+.detail-item .det-detail {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+}
+.severity-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.severity-low { background: rgba(72,187,120,0.2); color: #48bb78; }
+.severity-med { background: rgba(246,224,94,0.2); color: #d4a700; }
+.severity-high { background: rgba(237,137,54,0.2); color: #ed8936; }
+.severity-crit { background: rgba(252,129,129,0.2); color: #fc8181; }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.pagination button {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+.pagination button:hover { background: var(--bg-hover); }
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination button:focus-visible { outline: 2px solid var(--accent-blue); }
+.pagination .page-info {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ===== Sponsor Table ===== */
+.sponsor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.sponsor-table th {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.6rem 0.5rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+}
+.sponsor-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.sponsor-table tr:hover td { background: var(--bg-hover); }
+
+/* ===== Loading ===== */
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ===== Note Banner ===== */
+.note-banner {
+  background: rgba(77,166,255,0.08);
+  border: 1px solid rgba(77,166,255,0.2);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+/* ===== Toggle Legend ===== */
+.toggle-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  transition: var(--transition);
+  font-family: inherit;
+}
+.toggle-chip.active { border-color: currentColor; color: var(--text-primary); }
+.toggle-chip .chip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.toggle-chip:focus-visible { outline: 2px solid var(--accent-blue); }
+
+/* ===== Flaw Count Pill ===== */
+.flaw-pill {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.flaw-0 { background: rgba(72,187,120,0.15); color: #48bb78; }
+.flaw-1 { background: rgba(246,224,94,0.15); color: #d4a700; }
+.flaw-2 { background: rgba(237,137,54,0.15); color: #ed8936; }
+.flaw-3 { background: rgba(252,129,129,0.15); color: #fc8181; }
+.flaw-4plus { background: rgba(183,148,244,0.15); color: #b794f4; }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .app-header { padding: 0.75rem 1rem; }
+  .tab-content { padding: 1rem; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-card .value { font-size: 1.6rem; }
+  .explorer-controls { flex-direction: column; }
+  .filter-input { min-width: 100%; }
+  .heatmap-table { font-size: 0.72rem; }
+  .heatmap-table td { min-width: 48px; padding: 0.35rem 0.25rem; }
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3d4e7e; }
+
+/* ===== Table scroll wrapper ===== */
+.table-scroll {
+  overflow-x: auto;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* ===== Annotation ===== */
+.chart-annotation {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* ===== Accessibility: sr-only ===== */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+
+/* ===== P1-15: Explorer row focus-visible ===== */
+.data-table tr[data-idx]:focus-visible,
+.data-table th[data-sort]:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+}
+</style>
+</head>
+<body>
+
+<!-- Skip to content -->
+<a href="#main-content" class="sr-only" style="position:absolute;top:-40px;left:0;z-index:10000;background:var(--bg-card);color:var(--text-primary);padding:8px 16px;border-radius:4px;" onfocus="this.style.top='8px'" onblur="this.style.top='-40px'">Skip to content</a>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading CardioTrialAudit data...</div>
+</div>
+
+<!-- Live announce region for dynamic content -->
+<div id="liveAnnounce" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Header -->
+<header class="app-header">
+  <div>
+    <h1>CardioTrialAudit</h1>
+    <div class="subtitle">Structural Flaw Analysis of Cardiology RCTs (2005-2026)</div>
+  </div>
+  <div class="header-meta">
+    <div id="headerTrialCount"></div>
+    <div id="headerSnapshot"></div>
+  </div>
+</header>
+
+<!-- Tab Navigation -->
+<nav class="tab-nav" role="tablist" aria-label="Dashboard sections">
+  <button class="tab-btn active" id="tab-btn-overview" role="tab" aria-selected="true" aria-controls="tab-overview" data-tab="overview" tabindex="0">Overview</button>
+  <button class="tab-btn" id="tab-btn-trends" role="tab" aria-selected="false" aria-controls="tab-trends" data-tab="trends" tabindex="-1">Trends</button>
+  <button class="tab-btn" id="tab-btn-heatmap" role="tab" aria-selected="false" aria-controls="tab-heatmap" data-tab="heatmap" tabindex="-1">Heatmap</button>
+  <button class="tab-btn" id="tab-btn-explorer" role="tab" aria-selected="false" aria-controls="tab-explorer" data-tab="explorer" tabindex="-1">Trial Explorer</button>
+  <button class="tab-btn" id="tab-btn-subdomains" role="tab" aria-selected="false" aria-controls="tab-subdomains" data-tab="subdomains" tabindex="-1">Subdomains</button>
+  <button class="tab-btn" id="tab-btn-sponsors" role="tab" aria-selected="false" aria-controls="tab-sponsors" data-tab="sponsors" tabindex="-1">Sponsors</button>
+  <button class="tab-btn" id="tab-btn-geographic" role="tab" aria-selected="false" aria-controls="tab-geographic" data-tab="geographic" tabindex="-1">Geographic</button>
+</nav>
+
+<main id="main-content">
+<!-- Tab: Overview -->
+<section class="tab-content active" id="tab-overview" role="tabpanel" aria-labelledby="tab-btn-overview">
+  <div class="stat-grid" id="overviewStats"></div>
+  <div class="two-col">
+    <div class="chart-wrap">
+      <h3>Detection Rates by Flaw Type</h3>
+      <div class="chart-container" style="height:400px;">
+        <canvas id="radarChart" role="img" aria-label="Detection rates radar chart"></canvas>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Flaw Count Distribution</h3>
+      <div class="chart-container" style="height:400px;">
+        <canvas id="flawDistChart" role="img" aria-label="Flaw count distribution chart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div id="overviewCallouts"></div>
+</section>
+
+<!-- Tab: Trends -->
+<section class="tab-content" id="tab-trends" role="tabpanel" aria-labelledby="tab-btn-trends">
+  <div class="note-banner">
+    Note: Trials started in 2024-2026 have artificially low ghost protocol and results delay rates because insufficient time has elapsed for these flaws to manifest.
+  </div>
+  <div class="toggle-legend" id="trendToggles"></div>
+  <div class="chart-wrap">
+    <h3>Flaw Prevalence Over Time (2005-2026)</h3>
+    <div class="chart-container" style="height:500px;">
+      <canvas id="trendsChart" role="img" aria-label="Flaw prevalence trends over time"></canvas>
+    </div>
+    <div class="chart-annotation">Dashed vertical lines: 2007 FDAAA, 2017 Final Rule, 2020 COVID pandemic onset</div>
+  </div>
+  <div class="chart-wrap">
+    <h3>Mean Flaw Count and Composite Severity Over Time</h3>
+    <div class="chart-container" style="height:350px;">
+      <canvas id="compositeTrendChart" role="img" aria-label="Mean flaw count and composite severity over time"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- Tab: Heatmap -->
+<section class="tab-content" id="tab-heatmap" role="tabpanel" aria-labelledby="tab-btn-heatmap">
+  <div class="chart-wrap">
+    <h3>Detection Rate Heatmap: Year x Detector</h3>
+    <div class="table-scroll">
+      <table class="heatmap-table" id="heatmapTable" role="grid" aria-label="Heatmap of detection rates by year and detector type">
+      </table>
+    </div>
+    <div class="chart-annotation">Color scale: green (0%) through yellow (25%) to red (50%+). Values show percentage of trials flagged.</div>
+  </div>
+</section>
+
+<!-- Tab: Trial Explorer -->
+<section class="tab-content" id="tab-explorer" role="tabpanel" aria-labelledby="tab-btn-explorer">
+  <div class="explorer-controls">
+    <div class="filter-group">
+      <label for="searchInput">Search</label>
+      <input type="text" id="searchInput" class="filter-input" placeholder="NCT ID or title..." aria-label="Search by NCT ID or title">
+    </div>
+    <div class="filter-group">
+      <label for="filterYearMin">Year Min</label>
+      <input type="number" id="filterYearMin" class="filter-input" style="min-width:80px;" min="2005" max="2026" placeholder="2005" aria-label="Minimum year">
+    </div>
+    <div class="filter-group">
+      <label for="filterYearMax">Year Max</label>
+      <input type="number" id="filterYearMax" class="filter-input" style="min-width:80px;" min="2005" max="2026" placeholder="2026" aria-label="Maximum year">
+    </div>
+    <div class="filter-group">
+      <label for="filterPhase">Phase</label>
+      <select id="filterPhase" class="filter-select" aria-label="Filter by phase">
+        <option value="">All</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterSponsorClass">Sponsor</label>
+      <select id="filterSponsorClass" class="filter-select" aria-label="Filter by sponsor class">
+        <option value="">All</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterFlawMin">Min Flaws</label>
+      <select id="filterFlawMin" class="filter-select" aria-label="Filter by minimum flaw count">
+        <option value="">Any</option>
+        <option value="1">1+</option>
+        <option value="2">2+</option>
+        <option value="3">3+</option>
+        <option value="4">4+</option>
+        <option value="5">5+</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterSubdomain">Subdomain</label>
+      <select id="filterSubdomain" class="filter-select" aria-label="Filter by subdomain">
+        <option value="">All</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-scroll" style="max-height:60vh;">
+    <table class="data-table" id="explorerTable">
+      <thead>
+        <tr>
+          <th data-sort="nct_id">NCT ID <span class="sort-arrow"></span></th>
+          <th data-sort="brief_title">Title <span class="sort-arrow"></span></th>
+          <th data-sort="start_year">Year <span class="sort-arrow"></span></th>
+          <th data-sort="phase">Phase <span class="sort-arrow"></span></th>
+          <th data-sort="overall_status">Status <span class="sort-arrow"></span></th>
+          <th data-sort="lead_sponsor_name">Sponsor <span class="sort-arrow"></span></th>
+          <th data-sort="flaw_count">Flaws <span class="sort-arrow"></span></th>
+          <th data-sort="composite_severity">Severity <span class="sort-arrow"></span></th>
+        </tr>
+      </thead>
+      <tbody id="explorerBody"></tbody>
+    </table>
+  </div>
+  <div class="pagination" id="explorerPagination"></div>
+</section>
+
+<!-- Tab: Subdomains -->
+<section class="tab-content" id="tab-subdomains" role="tabpanel" aria-labelledby="tab-btn-subdomains">
+  <div class="chart-wrap">
+    <h3>Flaw Detection Rates by CV Subdomain</h3>
+    <div class="chart-container" style="height:500px;">
+      <canvas id="subdomainChart" role="img" aria-label="Flaw detection rates by cardiovascular subdomain"></canvas>
+    </div>
+  </div>
+  <div class="chart-wrap">
+    <h3>Subdomain Summary</h3>
+    <div class="table-scroll">
+      <table class="sponsor-table" id="subdomainTable">
+        <thead>
+          <tr>
+            <th>Subdomain</th>
+            <th>Trial Count</th>
+            <th>% with Flaw</th>
+            <th>Mean Flaws</th>
+            <th>Mean Severity</th>
+            <th>Top Flaw</th>
+          </tr>
+        </thead>
+        <tbody id="subdomainTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Tab: Sponsors -->
+<section class="tab-content" id="tab-sponsors" role="tabpanel" aria-labelledby="tab-btn-sponsors">
+  <div class="two-col">
+    <div class="chart-wrap">
+      <h3>Industry vs Academic: Flaw Profile</h3>
+      <div class="chart-container" style="height:400px;">
+        <canvas id="sponsorCompareChart" role="img" aria-label="Industry vs academic flaw profile comparison"></canvas>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Sponsor Class Overview</h3>
+      <div class="chart-container" style="height:400px;">
+        <canvas id="sponsorClassChart" role="img" aria-label="Sponsor class overview chart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="chart-wrap">
+    <h3>Top 20 Sponsors by Trial Count</h3>
+    <div class="table-scroll">
+      <table class="sponsor-table" id="sponsorTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Sponsor</th>
+            <th>Trials</th>
+            <th>Industry %</th>
+            <th>Mean Flaws</th>
+            <th>Mean Severity</th>
+            <th>Ghost %</th>
+            <th>Delay %</th>
+          </tr>
+        </thead>
+        <tbody id="sponsorTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Tab: Geographic -->
+<section class="tab-content" id="tab-geographic" role="tabpanel" aria-labelledby="tab-btn-geographic">
+  <div class="chart-wrap">
+    <h3>Geographic Shifts Detection Rate by Period</h3>
+    <div class="chart-container" style="height:450px;">
+      <canvas id="geoBarChart" role="img" aria-label="Geographic shifts detection rate by period"></canvas>
+    </div>
+    <div class="chart-annotation">Geographic shifts detector flags trials whose site distribution deviates from domain norms (e.g., disproportionate enrollment in regions with less regulatory oversight).</div>
+  </div>
+  <div class="two-col">
+    <div class="chart-wrap">
+      <h3>Flaw Profile by Period (3-Year Bins)</h3>
+      <div class="chart-container" style="height:400px;">
+        <canvas id="geoPeriodChart" role="img" aria-label="Flaw profile by period"></canvas>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Trial Volume and Mean Severity by Period</h3>
+      <div class="chart-container" style="height:400px;">
+        <canvas id="geoVolumeChart" role="img" aria-label="Trial volume and mean severity by period"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+/* ===================================================================
+   CardioTrialAudit Dashboard — Main Application Script
+   =================================================================== */
+
+(function() {
+'use strict';
+
+/* ---- Constants ---- */
+const DETECTORS = [
+  'ghost_protocols', 'outcome_switching', 'population_distortion',
+  'sample_size_decay', 'sponsor_concentration', 'geographic_shifts',
+  'results_delay', 'endpoint_softening', 'comparator_manipulation',
+  'statistical_fragility'
+];
+
+const DETECTOR_LABELS = {
+  ghost_protocols: 'Ghost Protocols',
+  outcome_switching: 'Outcome Switching',
+  population_distortion: 'Population Distortion',
+  sample_size_decay: 'Sample Size Decay',
+  sponsor_concentration: 'Sponsor Concentration',
+  geographic_shifts: 'Geographic Shifts',
+  results_delay: 'Results Delay',
+  endpoint_softening: 'Endpoint Softening',
+  comparator_manipulation: 'Comparator Manipulation',
+  statistical_fragility: 'Statistical Fragility'
+};
+
+const DETECTOR_COLORS = {
+  ghost_protocols: '#fc8181',
+  outcome_switching: '#f687b3',
+  population_distortion: '#b794f4',
+  sample_size_decay: '#76e4f7',
+  sponsor_concentration: '#4da6ff',
+  geographic_shifts: '#48bb78',
+  results_delay: '#ed8936',
+  endpoint_softening: '#f6e05e',
+  comparator_manipulation: '#e53e3e',
+  statistical_fragility: '#9f7aea'
+};
+
+const PAGE_SIZE = 50;
+
+/* ---- State ---- */
+let DATA = null;
+let explorerPage = 0;
+let explorerFiltered = [];
+let explorerSort = { key: 'flaw_count', dir: -1 };
+let expandedRow = null;
+let chartInstances = {};
+let trendVisibility = {};
+
+/* ---- Utility ---- */
+function fmt(n, d) {
+  if (n == null || isNaN(n)) return '-';
+  d = d !== undefined ? d : 1;
+  return Number(n).toFixed(d);
+}
+function pct(n) {
+  if (n == null || isNaN(n)) return '-';
+  return (n * 100).toFixed(1) + '%';
+}
+function fmtInt(n) {
+  if (n == null || isNaN(n)) return '-';
+  return Number(n).toLocaleString('en-US');
+}
+function truncate(s, len) {
+  if (!s) return '';
+  return s.length > len ? s.substring(0, len) + '...' : s;
+}
+
+function severityClass(s) {
+  if (s == null || s <= 0) return 'severity-low';
+  if (s < 0.3) return 'severity-low';
+  if (s < 0.6) return 'severity-med';
+  if (s < 0.8) return 'severity-high';
+  return 'severity-crit';
+}
+
+function flawPillClass(n) {
+  if (n === 0) return 'flaw-0';
+  if (n === 1) return 'flaw-1';
+  if (n === 2) return 'flaw-2';
+  if (n === 3) return 'flaw-3';
+  return 'flaw-4plus';
+}
+
+function heatColor(rate) {
+  // green (0%) -> yellow (25%) -> red (50%+)
+  var r, g, b;
+  var t = Math.min(rate / 0.5, 1);
+  if (t <= 0.5) {
+    // green to yellow
+    var u = t / 0.5;
+    r = Math.round(40 + u * 200);
+    g = Math.round(180 - u * 30);
+    b = Math.round(60 - u * 40);
+  } else {
+    // yellow to red
+    var u = (t - 0.5) / 0.5;
+    r = Math.round(240);
+    g = Math.round(150 - u * 120);
+    b = Math.round(20 + u * 20);
+  }
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+function textColorForBg(rate) {
+  // Returns appropriate text color for heatmap cells
+  return rate > 0.25 ? '#fff' : '#1a1a2e';
+}
+
+function parseSubdomains(val) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val.replace(/'/g, '"'));
+    } catch(e) {
+      return val.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+           .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+/* ---- Chart.js Global Config ---- */
+function configureChartDefaults() {
+  Chart.defaults.color = '#a0aec0';
+  Chart.defaults.borderColor = 'rgba(45,58,94,0.5)';
+  Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  Chart.defaults.font.size = 12;
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  Chart.defaults.plugins.legend.labels.padding = 16;
+}
+
+/* ---- Data Loading ---- */
+function getDataUrl() {
+  var params = new URLSearchParams(window.location.search);
+  var custom = params.get('data');
+  if (custom && (custom.startsWith('./') || custom.startsWith('../'))) return custom;
+  return '../data/results/dashboard.json';
+}
+
+function loadData() {
+  var url = getDataUrl();
+  var loadingText = document.querySelector('.loading-text');
+  loadingText.textContent = 'Loading data from ' + url + '...';
+
+  fetch(url)
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      loadingText.textContent = 'Parsing JSON (this may take a moment for large datasets)...';
+      return resp.json();
+    })
+    .then(function(data) {
+      DATA = data;
+      loadingText.textContent = 'Rendering dashboard...';
+      setTimeout(function() {
+        initDashboard();
+        document.getElementById('loadingOverlay').style.display = 'none';
+      }, 50);
+    })
+    .catch(function(err) {
+      loadingText.textContent = 'Error loading data: ' + err.message;
+      loadingText.style.color = '#fc8181';
+      console.error('Data load error:', err);
+    });
+}
+
+/* ---- Tab Navigation ---- */
+function initTabs() {
+  var tabs = document.querySelectorAll('.tab-btn');
+  var panels = document.querySelectorAll('.tab-content');
+
+  function activateTab(tabEl) {
+    tabs.forEach(function(t) {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+      t.setAttribute('tabindex', '-1');
+    });
+    panels.forEach(function(p) { p.classList.remove('active'); });
+
+    tabEl.classList.add('active');
+    tabEl.setAttribute('aria-selected', 'true');
+    tabEl.setAttribute('tabindex', '0');
+    var target = document.getElementById('tab-' + tabEl.dataset.tab);
+    if (target) target.classList.add('active');
+
+    // Lazy chart rendering
+    var tabName = tabEl.dataset.tab;
+    if (tabName === 'trends' && !chartInstances.trends) renderTrendsTab();
+    if (tabName === 'heatmap' && !document.getElementById('heatmapTable').querySelector('tr')) renderHeatmapTab();
+    if (tabName === 'subdomains' && !chartInstances.subdomain) renderSubdomainsTab();
+    if (tabName === 'sponsors' && !chartInstances.sponsorCompare) renderSponsorsTab();
+    if (tabName === 'geographic' && !chartInstances.geoBar) renderGeographicTab();
+  }
+
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() { activateTab(tab); });
+    tab.addEventListener('keydown', function(e) {
+      var allTabs = Array.from(tabs);
+      var idx = allTabs.indexOf(tab);
+      var next = -1;
+      if (e.key === 'ArrowRight') next = (idx + 1) % allTabs.length;
+      else if (e.key === 'ArrowLeft') next = (idx - 1 + allTabs.length) % allTabs.length;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = allTabs.length - 1;
+      if (next >= 0) {
+        e.preventDefault();
+        allTabs[next].focus();
+        activateTab(allTabs[next]);
+      }
+    });
+  });
+}
+
+/* ---- Dashboard Init ---- */
+function initDashboard() {
+  configureChartDefaults();
+
+  // Header meta
+  var meta = DATA.meta || {};
+  document.getElementById('headerTrialCount').textContent = fmtInt(meta.n_trials || DATA.trials.length) + ' trials analyzed';
+  document.getElementById('headerSnapshot').textContent = 'AACT snapshot: ' + (meta.aact_snapshot || meta.generated_at || 'N/A').substring(0, 10);
+
+  // Overview is always visible first
+  renderOverviewTab();
+
+  // Explorer needs immediate init for filters
+  initExplorer();
+}
+
+/* ===================================================================
+   TAB 1: Overview
+   =================================================================== */
+function renderOverviewTab() {
+  var trials = DATA.trials;
+  var n = trials.length;
+  var flawed = 0;
+  var totalFlaws = 0;
+  var flawDist = {};
+  var detRates = {};
+
+  DETECTORS.forEach(function(d) { detRates[d] = 0; });
+
+  for (var i = 0; i < n; i++) {
+    var t = trials[i];
+    if (t.flaw_count >= 1) flawed++;
+    totalFlaws += t.flaw_count;
+    var fc = Math.min(t.flaw_count, 6);
+    flawDist[fc] = (flawDist[fc] || 0) + 1;
+    DETECTORS.forEach(function(d) {
+      if (t[d + '_detected']) detRates[d]++;
+    });
+  }
+
+  var meanFlaws = totalFlaws / n;
+  var mostCommon = DETECTORS.slice().sort(function(a,b) { return detRates[b] - detRates[a]; })[0];
+
+  // Stat cards
+  var statsHtml = '';
+  statsHtml += '<div class="stat-card"><div class="value">' + fmtInt(n) + '</div><div class="label">Total Trials</div></div>';
+  statsHtml += '<div class="stat-card danger"><div class="value">' + pct(flawed / n) + '</div><div class="label">With 1+ Flaw</div></div>';
+  statsHtml += '<div class="stat-card warn"><div class="value">' + fmt(meanFlaws, 2) + '</div><div class="label">Mean Flaw Count</div></div>';
+  statsHtml += '<div class="stat-card"><div class="value">' + DETECTOR_LABELS[mostCommon] + '</div><div class="label">Most Common (' + pct(detRates[mostCommon] / n) + ')</div></div>';
+  document.getElementById('overviewStats').innerHTML = statsHtml;
+
+  // Radar chart
+  var radarLabels = DETECTORS.map(function(d) { return DETECTOR_LABELS[d]; });
+  var radarData = DETECTORS.map(function(d) { return (detRates[d] / n * 100); });
+  var radarColors = DETECTORS.map(function(d) { return DETECTOR_COLORS[d]; });
+
+  if (chartInstances.radar) chartInstances.radar.destroy();
+  chartInstances.radar = new Chart(document.getElementById('radarChart'), {
+    type: 'radar',
+    data: {
+      labels: radarLabels,
+      datasets: [{
+        label: 'Detection Rate (%)',
+        data: radarData,
+        backgroundColor: 'rgba(77,166,255,0.15)',
+        borderColor: 'rgba(77,166,255,0.8)',
+        borderWidth: 2,
+        pointBackgroundColor: radarColors,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.label + ': ' + ctx.raw.toFixed(1) + '%'; }
+          }
+        }
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 70,
+          ticks: { stepSize: 10, backdropColor: 'transparent', font: { size: 10 } },
+          grid: { color: 'rgba(45,58,94,0.4)' },
+          pointLabels: { font: { size: 11 }, color: '#a0aec0' }
+        }
+      }
+    }
+  });
+
+  // Dynamic aria-label for radar chart
+  var radarCanvas = document.getElementById('radarChart');
+  radarCanvas.setAttribute('aria-label', 'Detection rates: ' + DETECTORS.map(function(d, i) { return DETECTOR_LABELS[d] + ' ' + radarData[i].toFixed(0) + '%'; }).join(', '));
+
+  // Flaw distribution bar chart
+  var distLabels = ['0', '1', '2', '3', '4', '5', '6+'];
+  var distData = distLabels.map(function(_, i) { return flawDist[i] || 0; });
+  var distColors = ['#48bb78', '#f6e05e', '#ed8936', '#fc8181', '#b794f4', '#e53e3e', '#9f7aea'];
+
+  if (chartInstances.flawDist) chartInstances.flawDist.destroy();
+  chartInstances.flawDist = new Chart(document.getElementById('flawDistChart'), {
+    type: 'bar',
+    data: {
+      labels: distLabels,
+      datasets: [{
+        label: 'Number of Trials',
+        data: distData,
+        backgroundColor: distColors.map(function(c) { return c + '99'; }),
+        borderColor: distColors,
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return fmtInt(ctx.raw) + ' trials (' + (ctx.raw / n * 100).toFixed(1) + '%)';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Number of Flaws', color: '#718096' } },
+        y: { title: { display: true, text: 'Trials', color: '#718096' }, beginAtZero: true }
+      }
+    }
+  });
+
+  // Dynamic aria-label for flaw distribution chart
+  var flawDistCanvas = document.getElementById('flawDistChart');
+  flawDistCanvas.setAttribute('aria-label', 'Flaw distribution: ' + distLabels.map(function(l, i) { return l + ' flaws: ' + distData[i] + ' trials'; }).join(', '));
+
+  // Callout boxes
+  var calloutsHtml = '';
+  calloutsHtml += '<div class="callout danger"><strong>' + pct(detRates.ghost_protocols / n) + ' of trials are ghost protocols</strong>';
+  calloutsHtml += '<p>Registered but never posted results, with no updates for extended periods. This is the most prevalent structural flaw.</p></div>';
+
+  calloutsHtml += '<div class="callout warn"><strong>' + pct(detRates.results_delay / n) + ' show significant results reporting delay</strong>';
+  calloutsHtml += '<p>Results posted well beyond the 12-month deadline mandated by FDAAA 801 and the 2017 Final Rule.</p></div>';
+
+  calloutsHtml += '<div class="callout"><strong>' + pct(detRates.population_distortion / n) + ' exhibit population distortion</strong>';
+  calloutsHtml += '<p>Age ranges, exclusion criteria, or enrollment characteristics deviate from typical populations for the target condition.</p></div>';
+
+  document.getElementById('overviewCallouts').innerHTML = calloutsHtml;
+}
+
+/* ===================================================================
+   TAB 2: Trends
+   =================================================================== */
+function renderTrendsTab() {
+  var trends = DATA.trends;
+  if (!trends || !trends.length) return;
+
+  var years = trends.map(function(t) { return t.year; });
+
+  // Init visibility
+  DETECTORS.forEach(function(d) {
+    if (trendVisibility[d] === undefined) {
+      // Default: show top 5 detectors
+      var topDefaults = ['ghost_protocols', 'results_delay', 'population_distortion', 'endpoint_softening', 'sponsor_concentration'];
+      trendVisibility[d] = topDefaults.indexOf(d) >= 0;
+    }
+  });
+
+  // Toggle chips
+  var toggleHtml = '';
+  DETECTORS.forEach(function(d) {
+    var active = trendVisibility[d] ? ' active' : '';
+    toggleHtml += '<button class="toggle-chip' + active + '" data-detector="' + d + '" ' +
+      'aria-pressed="' + trendVisibility[d] + '" tabindex="0">' +
+      '<span class="chip-dot" style="background:' + DETECTOR_COLORS[d] + '"></span>' +
+      DETECTOR_LABELS[d] + '</button>';
+  });
+  document.getElementById('trendToggles').innerHTML = toggleHtml;
+
+  // Bind toggle events
+  document.getElementById('trendToggles').addEventListener('click', function(e) {
+    var chip = e.target.closest('.toggle-chip');
+    if (!chip) return;
+    var det = chip.dataset.detector;
+    trendVisibility[det] = !trendVisibility[det];
+    chip.classList.toggle('active');
+    chip.setAttribute('aria-pressed', String(trendVisibility[det]));
+    updateTrendsChart();
+  });
+
+  function buildTrendsDatasets() {
+    var datasets = [];
+    DETECTORS.forEach(function(d) {
+      datasets.push({
+        label: DETECTOR_LABELS[d],
+        data: trends.map(function(t) { return (t[d + '_rate'] || 0) * 100; }),
+        borderColor: DETECTOR_COLORS[d],
+        backgroundColor: DETECTOR_COLORS[d] + '22',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        hidden: !trendVisibility[d]
+      });
+    });
+    return datasets;
+  }
+
+  // Annotation lines for milestones
+  var annotationLines = [
+    { year: 2007, label: 'FDAAA 2007' },
+    { year: 2017, label: 'Final Rule 2017' },
+    { year: 2020, label: 'COVID 2020' }
+  ];
+
+  if (chartInstances.trends) chartInstances.trends.destroy();
+  chartInstances.trends = new Chart(document.getElementById('trendsChart'), {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: buildTrendsDatasets()
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + '%'; }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Year', color: '#718096' },
+          grid: { display: false }
+        },
+        y: {
+          title: { display: true, text: 'Detection Rate (%)', color: '#718096' },
+          beginAtZero: true,
+          max: 85
+        }
+      }
+    },
+    plugins: [{
+      id: 'milestoneLines',
+      afterDraw: function(chart) {
+        var ctx = chart.ctx;
+        var xScale = chart.scales.x;
+        var yScale = chart.scales.y;
+        annotationLines.forEach(function(line) {
+          var idx = years.indexOf(line.year);
+          if (idx < 0) return;
+          var x = xScale.getPixelForValue(idx);
+          ctx.save();
+          ctx.beginPath();
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = 'rgba(160,174,192,0.4)';
+          ctx.lineWidth = 1;
+          ctx.moveTo(x, yScale.top);
+          ctx.lineTo(x, yScale.bottom);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = '10px sans-serif';
+          ctx.fillStyle = 'rgba(160,174,192,0.7)';
+          ctx.textAlign = 'center';
+          ctx.fillText(line.label, x, yScale.top - 5);
+          ctx.restore();
+        });
+      }
+    }]
+  });
+
+  function updateTrendsChart() {
+    if (!chartInstances.trends) return;
+    DETECTORS.forEach(function(d, i) {
+      chartInstances.trends.data.datasets[i].hidden = !trendVisibility[d];
+    });
+    chartInstances.trends.update();
+  }
+
+  // Composite trend chart
+  var compData = trends.map(function(t) { return t.mean_flaw_count; });
+  var sevData = trends.map(function(t) { return (t.composite_mean || 0); });
+  var nData = trends.map(function(t) { return t.n_trials; });
+
+  if (chartInstances.compositeTrend) chartInstances.compositeTrend.destroy();
+  chartInstances.compositeTrend = new Chart(document.getElementById('compositeTrendChart'), {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        {
+          label: 'Mean Flaw Count',
+          data: compData,
+          borderColor: '#4da6ff',
+          backgroundColor: 'rgba(77,166,255,0.1)',
+          borderWidth: 2,
+          yAxisID: 'y',
+          tension: 0.3,
+          pointRadius: 3
+        },
+        {
+          label: 'Mean Composite Severity',
+          data: sevData,
+          borderColor: '#fc8181',
+          backgroundColor: 'rgba(252,129,129,0.1)',
+          borderWidth: 2,
+          yAxisID: 'y',
+          tension: 0.3,
+          pointRadius: 3
+        },
+        {
+          label: 'Trial Count',
+          data: nData,
+          borderColor: 'rgba(72,187,120,0.5)',
+          backgroundColor: 'rgba(72,187,120,0.1)',
+          borderWidth: 1,
+          yAxisID: 'y2',
+          type: 'bar',
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top' }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          title: { display: true, text: 'Score', color: '#718096' },
+          beginAtZero: true,
+          position: 'left'
+        },
+        y2: {
+          title: { display: true, text: 'Trial Count', color: '#718096' },
+          beginAtZero: true,
+          position: 'right',
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+/* ===================================================================
+   TAB 3: Heatmap
+   =================================================================== */
+function renderHeatmapTab() {
+  var trends = DATA.trends;
+  if (!trends || !trends.length) return;
+
+  var table = document.getElementById('heatmapTable');
+  var html = '<thead><tr><th>Year</th>';
+  DETECTORS.forEach(function(d) {
+    html += '<th>' + DETECTOR_LABELS[d] + '</th>';
+  });
+  html += '<th>N Trials</th></tr></thead><tbody>';
+
+  trends.forEach(function(row) {
+    html += '<tr><td class="row-label">' + row.year + '</td>';
+    DETECTORS.forEach(function(d) {
+      var rate = row[d + '_rate'] || 0;
+      var bg = heatColor(rate);
+      var fg = textColorForBg(rate);
+      html += '<td style="background:' + bg + ';color:' + fg + '">' + (rate * 100).toFixed(1) + '</td>';
+    });
+    html += '<td class="row-label">' + fmtInt(row.n_trials) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+/* ===================================================================
+   TAB 4: Trial Explorer
+   =================================================================== */
+function initExplorer() {
+  // Populate filter dropdowns from data
+  var phases = {};
+  var sponsorClasses = {};
+  var subdomains = {};
+
+  // We only scan a subset for the dropdown options (they are known enums)
+  var trials = DATA.trials;
+  for (var i = 0; i < trials.length; i++) {
+    var t = trials[i];
+    if (t.phase) phases[t.phase] = true;
+    var sc = t.lead_sponsor_class || t.source_class;
+    if (sc) sponsorClasses[sc] = true;
+    var subs = parseSubdomains(t.cv_subdomains);
+    subs.forEach(function(s) { subdomains[s] = true; });
+  }
+
+  var phaseSelect = document.getElementById('filterPhase');
+  Object.keys(phases).sort().forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p;
+    phaseSelect.appendChild(opt);
+  });
+
+  var scSelect = document.getElementById('filterSponsorClass');
+  Object.keys(sponsorClasses).sort().forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    scSelect.appendChild(opt);
+  });
+
+  var subSelect = document.getElementById('filterSubdomain');
+  Object.keys(subdomains).sort().forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    subSelect.appendChild(opt);
+  });
+
+  // Bind filter events
+  var filterIds = ['searchInput', 'filterYearMin', 'filterYearMax', 'filterPhase', 'filterSponsorClass', 'filterFlawMin', 'filterSubdomain'];
+  var debounceTimer = null;
+  filterIds.forEach(function(id) {
+    document.getElementById(id).addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function() { applyExplorerFilters(); }, 300);
+    });
+    document.getElementById(id).addEventListener('change', function() {
+      clearTimeout(debounceTimer);
+      applyExplorerFilters();
+    });
+  });
+
+  // Sort headers
+  document.querySelectorAll('#explorerTable th[data-sort]').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var key = th.dataset.sort;
+      if (explorerSort.key === key) {
+        explorerSort.dir *= -1;
+      } else {
+        explorerSort.key = key;
+        explorerSort.dir = key === 'flaw_count' || key === 'composite_severity' ? -1 : 1;
+      }
+      sortExplorer();
+      renderExplorerPage();
+      updateSortArrows();
+    });
+    th.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        th.click();
+      }
+    });
+    th.setAttribute('tabindex', '0');
+    th.setAttribute('role', 'columnheader');
+  });
+
+  // Initial filter/render
+  applyExplorerFilters();
+}
+
+function applyExplorerFilters() {
+  var search = document.getElementById('searchInput').value.toLowerCase().trim();
+  var yearMin = parseInt(document.getElementById('filterYearMin').value) || 2005;
+  var yearMax = parseInt(document.getElementById('filterYearMax').value) || 2026;
+  var phase = document.getElementById('filterPhase').value;
+  var sponsorClass = document.getElementById('filterSponsorClass').value;
+  var flawMin = parseInt(document.getElementById('filterFlawMin').value) || 0;
+  var subdomain = document.getElementById('filterSubdomain').value;
+
+  var trials = DATA.trials;
+  explorerFiltered = [];
+
+  for (var i = 0; i < trials.length; i++) {
+    var t = trials[i];
+    var yr = t.start_year || 0;
+    if (yr < yearMin || yr > yearMax) continue;
+    if (phase && t.phase !== phase) continue;
+    if (sponsorClass) {
+      var sc = t.lead_sponsor_class || t.source_class;
+      if (sc !== sponsorClass) continue;
+    }
+    if (t.flaw_count < flawMin) continue;
+    if (subdomain) {
+      var subs = parseSubdomains(t.cv_subdomains);
+      if (subs.indexOf(subdomain) < 0) continue;
+    }
+    if (search) {
+      var haystack = ((t.nct_id || '') + ' ' + (t.brief_title || '')).toLowerCase();
+      if (haystack.indexOf(search) < 0) continue;
+    }
+    explorerFiltered.push(t);
+  }
+
+  sortExplorer();
+  explorerPage = 0;
+
+  // Announce filter results to screen readers
+  var liveEl = document.getElementById('liveAnnounce');
+  if (liveEl) {
+    liveEl.textContent = 'Filter applied: ' + explorerFiltered.length + ' trials found';
+  }
+
+  renderExplorerPage();
+}
+
+function sortExplorer() {
+  var key = explorerSort.key;
+  var dir = explorerSort.dir;
+  explorerFiltered.sort(function(a, b) {
+    var va = a[key];
+    var vb = b[key];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === 'string') {
+      return va.localeCompare(vb) * dir;
+    }
+    return (va - vb) * dir;
+  });
+}
+
+function updateSortArrows() {
+  document.querySelectorAll('#explorerTable th[data-sort]').forEach(function(th) {
+    var arrow = th.querySelector('.sort-arrow');
+    th.removeAttribute('aria-sort');
+    if (th.dataset.sort === explorerSort.key) {
+      arrow.textContent = explorerSort.dir > 0 ? ' \u25B2' : ' \u25BC';
+      th.setAttribute('aria-sort', explorerSort.dir > 0 ? 'ascending' : 'descending');
+    } else {
+      arrow.textContent = '';
+    }
+  });
+}
+
+function renderExplorerPage() {
+  var body = document.getElementById('explorerBody');
+  var start = explorerPage * PAGE_SIZE;
+  var end = Math.min(start + PAGE_SIZE, explorerFiltered.length);
+  var total = explorerFiltered.length;
+  var totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  var html = '';
+  for (var i = start; i < end; i++) {
+    var t = explorerFiltered[i];
+    var pillClass = flawPillClass(t.flaw_count);
+    var sevClass = severityClass(t.composite_severity);
+
+    html += '<tr data-idx="' + i + '" tabindex="0" role="row" style="cursor:pointer;">';
+    html += '<td><a href="https://clinicaltrials.gov/study/' + escapeHtml(t.nct_id) + '" target="_blank" rel="noopener">' + escapeHtml(t.nct_id) + '</a></td>';
+    html += '<td>' + escapeHtml(truncate(t.brief_title, 60)) + '</td>';
+    html += '<td>' + (t.start_year ? Math.floor(t.start_year) : '-') + '</td>';
+    html += '<td>' + escapeHtml(t.phase || '-') + '</td>';
+    html += '<td>' + escapeHtml(t.overall_status || '-') + '</td>';
+    html += '<td>' + escapeHtml(truncate(t.lead_sponsor_name, 30)) + '</td>';
+    html += '<td><span class="flaw-pill ' + pillClass + '">' + t.flaw_count + '</span></td>';
+    html += '<td><span class="severity-badge ' + sevClass + '">' + fmt(t.composite_severity, 2) + '</span></td>';
+    html += '</tr>';
+
+    // Detail row (hidden by default)
+    html += '<tr class="trial-detail" data-detail-idx="' + i + '"><td colspan="8"><div class="detail-grid">';
+    DETECTORS.forEach(function(d) {
+      if (t[d + '_detected']) {
+        var sev = t[d + '_severity'] || 0;
+        var sc = severityClass(sev);
+        html += '<div class="detail-item">';
+        html += '<span class="det-name">' + DETECTOR_LABELS[d] + '</span> ';
+        html += '<span class="severity-badge ' + sc + '">' + fmt(sev, 2) + '</span>';
+        html += '<div class="det-detail">' + escapeHtml(t[d + '_detail'] || 'Detected') + '</div>';
+        html += '</div>';
+      }
+    });
+    html += '</div></td></tr>';
+  }
+
+  body.innerHTML = html;
+
+  // Bind row click for expand/collapse
+  body.querySelectorAll('tr[data-idx]').forEach(function(row) {
+    function toggleDetail() {
+      var idx = row.dataset.idx;
+      var detailRow = body.querySelector('tr[data-detail-idx="' + idx + '"]');
+      if (!detailRow) return;
+      var isOpen = detailRow.classList.contains('open');
+      // Close any open
+      body.querySelectorAll('.trial-detail.open').forEach(function(r) { r.classList.remove('open'); });
+      body.querySelectorAll('tr.expanded').forEach(function(r) { r.classList.remove('expanded'); });
+      if (!isOpen) {
+        detailRow.classList.add('open');
+        row.classList.add('expanded');
+      }
+    }
+    row.addEventListener('click', function(e) {
+      if (e.target.tagName === 'A') return;
+      toggleDetail();
+    });
+    row.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleDetail();
+      }
+    });
+  });
+
+  // Pagination
+  var pagHtml = '';
+  pagHtml += '<button id="pagFirst" aria-label="First page">&laquo;</button>';
+  pagHtml += '<button id="pagPrev" aria-label="Previous page">&lsaquo;</button>';
+  pagHtml += '<span class="page-info">Page ' + (explorerPage + 1) + ' of ' + totalPages + ' (' + fmtInt(total) + ' trials)</span>';
+  pagHtml += '<button id="pagNext" aria-label="Next page">&rsaquo;</button>';
+  pagHtml += '<button id="pagLast" aria-label="Last page">&raquo;</button>';
+
+  var pagEl = document.getElementById('explorerPagination');
+  pagEl.innerHTML = pagHtml;
+
+  document.getElementById('pagFirst').disabled = explorerPage === 0;
+  document.getElementById('pagPrev').disabled = explorerPage === 0;
+  document.getElementById('pagNext').disabled = explorerPage >= totalPages - 1;
+  document.getElementById('pagLast').disabled = explorerPage >= totalPages - 1;
+
+  document.getElementById('pagFirst').addEventListener('click', function() { explorerPage = 0; renderExplorerPage(); });
+  document.getElementById('pagPrev').addEventListener('click', function() { explorerPage = Math.max(0, explorerPage - 1); renderExplorerPage(); });
+  document.getElementById('pagNext').addEventListener('click', function() { explorerPage = Math.min(totalPages - 1, explorerPage + 1); renderExplorerPage(); });
+  document.getElementById('pagLast').addEventListener('click', function() { explorerPage = totalPages - 1; renderExplorerPage(); });
+
+  updateSortArrows();
+
+  // P0-7: Announce page content to screen readers
+  var liveEl = document.getElementById('liveAnnounce');
+  if (liveEl) {
+    liveEl.textContent = 'Showing ' + (start + 1) + ' to ' + end + ' of ' + total + ' trials';
+  }
+}
+
+/* ===================================================================
+   TAB 5: Subdomains
+   =================================================================== */
+function renderSubdomainsTab() {
+  var trials = DATA.trials;
+  var subStats = {};
+
+  for (var i = 0; i < trials.length; i++) {
+    var t = trials[i];
+    var subs = parseSubdomains(t.cv_subdomains);
+    subs.forEach(function(s) {
+      if (!subStats[s]) {
+        subStats[s] = { count: 0, flawed: 0, totalFlaws: 0, totalSev: 0, detCounts: {} };
+        DETECTORS.forEach(function(d) { subStats[s].detCounts[d] = 0; });
+      }
+      var st = subStats[s];
+      st.count++;
+      if (t.flaw_count >= 1) st.flawed++;
+      st.totalFlaws += t.flaw_count;
+      st.totalSev += t.composite_severity || 0;
+      DETECTORS.forEach(function(d) {
+        if (t[d + '_detected']) st.detCounts[d]++;
+      });
+    });
+  }
+
+  // Sort subdomains by count
+  var subNames = Object.keys(subStats).sort(function(a, b) { return subStats[b].count - subStats[a].count; });
+
+  // Top 6 detectors for the chart
+  var topDetectors = ['ghost_protocols', 'results_delay', 'population_distortion', 'endpoint_softening', 'sponsor_concentration', 'sample_size_decay'];
+
+  var datasets = topDetectors.map(function(d) {
+    return {
+      label: DETECTOR_LABELS[d],
+      data: subNames.map(function(s) { return (subStats[s].detCounts[d] / subStats[s].count * 100); }),
+      backgroundColor: DETECTOR_COLORS[d] + 'aa',
+      borderColor: DETECTOR_COLORS[d],
+      borderWidth: 1,
+      borderRadius: 3
+    };
+  });
+
+  if (chartInstances.subdomain) chartInstances.subdomain.destroy();
+  chartInstances.subdomain = new Chart(document.getElementById('subdomainChart'), {
+    type: 'bar',
+    data: {
+      labels: subNames.map(function(s) { return s.charAt(0).toUpperCase() + s.slice(1); }),
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + '%'; }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          title: { display: true, text: 'Detection Rate (%)', color: '#718096' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // Summary table
+  var tbody = document.getElementById('subdomainTableBody');
+  var tableHtml = '';
+  subNames.forEach(function(s) {
+    var st = subStats[s];
+    var meanFlaws = st.totalFlaws / st.count;
+    var meanSev = st.totalSev / st.count;
+    var topFlaw = DETECTORS.slice().sort(function(a, b) { return st.detCounts[b] - st.detCounts[a]; })[0];
+    tableHtml += '<tr>';
+    tableHtml += '<td>' + escapeHtml(s.charAt(0).toUpperCase() + s.slice(1)) + '</td>';
+    tableHtml += '<td>' + fmtInt(st.count) + '</td>';
+    tableHtml += '<td>' + pct(st.flawed / st.count) + '</td>';
+    tableHtml += '<td>' + fmt(meanFlaws, 2) + '</td>';
+    tableHtml += '<td>' + fmt(meanSev, 2) + '</td>';
+    tableHtml += '<td>' + DETECTOR_LABELS[topFlaw] + ' (' + pct(st.detCounts[topFlaw] / st.count) + ')</td>';
+    tableHtml += '</tr>';
+  });
+  tbody.innerHTML = tableHtml;
+}
+
+/* ===================================================================
+   TAB 6: Sponsors
+   =================================================================== */
+function renderSponsorsTab() {
+  var trials = DATA.trials;
+
+  // Sponsor name aggregation
+  var sponsorMap = {};
+  for (var i = 0; i < trials.length; i++) {
+    var t = trials[i];
+    var name = t.lead_sponsor_name || 'Unknown';
+    if (!sponsorMap[name]) {
+      sponsorMap[name] = {
+        count: 0,
+        industryCount: 0,
+        totalFlaws: 0,
+        totalSev: 0,
+        detCounts: {}
+      };
+      DETECTORS.forEach(function(d) { sponsorMap[name].detCounts[d] = 0; });
+    }
+    var sp = sponsorMap[name];
+    sp.count++;
+    var sc = t.lead_sponsor_class || t.source_class;
+    if (sc === 'INDUSTRY') sp.industryCount++;
+    sp.totalFlaws += t.flaw_count;
+    sp.totalSev += t.composite_severity || 0;
+    DETECTORS.forEach(function(d) {
+      if (t[d + '_detected']) sp.detCounts[d]++;
+    });
+  }
+
+  // Top 20 by count
+  var topSponsors = Object.keys(sponsorMap).sort(function(a, b) {
+    return sponsorMap[b].count - sponsorMap[a].count;
+  }).slice(0, 20);
+
+  var tbody = document.getElementById('sponsorTableBody');
+  var tableHtml = '';
+  topSponsors.forEach(function(name, idx) {
+    var sp = sponsorMap[name];
+    tableHtml += '<tr>';
+    tableHtml += '<td>' + (idx + 1) + '</td>';
+    tableHtml += '<td>' + escapeHtml(truncate(name, 40)) + '</td>';
+    tableHtml += '<td>' + fmtInt(sp.count) + '</td>';
+    tableHtml += '<td>' + pct(sp.industryCount / sp.count) + '</td>';
+    tableHtml += '<td>' + fmt(sp.totalFlaws / sp.count, 2) + '</td>';
+    tableHtml += '<td>' + fmt(sp.totalSev / sp.count, 2) + '</td>';
+    tableHtml += '<td>' + pct(sp.detCounts.ghost_protocols / sp.count) + '</td>';
+    tableHtml += '<td>' + pct(sp.detCounts.results_delay / sp.count) + '</td>';
+    tableHtml += '</tr>';
+  });
+  tbody.innerHTML = tableHtml;
+
+  // Industry vs Academic comparison
+  var classStats = {};
+  var classLabels = { INDUSTRY: 'Industry', OTHER: 'Academic/Other', NIH: 'NIH', FED: 'Federal', NETWORK: 'Network', OTHER_GOV: 'Other Gov' };
+
+  for (var i = 0; i < trials.length; i++) {
+    var t = trials[i];
+    var sc = t.lead_sponsor_class || t.source_class || 'UNKNOWN';
+    if (!classStats[sc]) {
+      classStats[sc] = { count: 0, totalFlaws: 0, totalSev: 0, detCounts: {} };
+      DETECTORS.forEach(function(d) { classStats[sc].detCounts[d] = 0; });
+    }
+    classStats[sc].count++;
+    classStats[sc].totalFlaws += t.flaw_count;
+    classStats[sc].totalSev += t.composite_severity || 0;
+    DETECTORS.forEach(function(d) {
+      if (t[d + '_detected']) classStats[sc].detCounts[d]++;
+    });
+  }
+
+  // Compare Industry vs OTHER (academic)
+  var compareClasses = ['INDUSTRY', 'OTHER'];
+  var compareDetectors = ['ghost_protocols', 'results_delay', 'population_distortion', 'endpoint_softening', 'comparator_manipulation', 'sample_size_decay'];
+
+  if (chartInstances.sponsorCompare) chartInstances.sponsorCompare.destroy();
+  chartInstances.sponsorCompare = new Chart(document.getElementById('sponsorCompareChart'), {
+    type: 'bar',
+    data: {
+      labels: compareDetectors.map(function(d) { return DETECTOR_LABELS[d]; }),
+      datasets: compareClasses.map(function(cls, ci) {
+        var colors = ['#4da6ff', '#48bb78'];
+        return {
+          label: classLabels[cls] || cls,
+          data: compareDetectors.map(function(d) {
+            var st = classStats[cls];
+            return st ? (st.detCounts[d] / st.count * 100) : 0;
+          }),
+          backgroundColor: colors[ci] + 'aa',
+          borderColor: colors[ci],
+          borderWidth: 1,
+          borderRadius: 3
+        };
+      })
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + '%'; }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          title: { display: true, text: 'Detection Rate (%)', color: '#718096' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // Sponsor class overview chart
+  var classNames = Object.keys(classStats).filter(function(c) { return classStats[c].count >= 20; })
+    .sort(function(a, b) { return classStats[b].count - classStats[a].count; });
+
+  if (chartInstances.sponsorClass) chartInstances.sponsorClass.destroy();
+  chartInstances.sponsorClass = new Chart(document.getElementById('sponsorClassChart'), {
+    type: 'bar',
+    data: {
+      labels: classNames.map(function(c) { return classLabels[c] || c; }),
+      datasets: [
+        {
+          label: 'Mean Flaw Count',
+          data: classNames.map(function(c) { return classStats[c].totalFlaws / classStats[c].count; }),
+          backgroundColor: '#ed8936aa',
+          borderColor: '#ed8936',
+          borderWidth: 1,
+          borderRadius: 3,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Mean Severity',
+          data: classNames.map(function(c) { return classStats[c].totalSev / classStats[c].count; }),
+          backgroundColor: '#fc8181aa',
+          borderColor: '#fc8181',
+          borderWidth: 1,
+          borderRadius: 3,
+          yAxisID: 'y'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw.toFixed(2); }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          title: { display: true, text: 'Score', color: '#718096' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+/* ===================================================================
+   TAB 7: Geographic
+   =================================================================== */
+function renderGeographicTab() {
+  var binned = DATA.binned_trends;
+  if (!binned || !binned.length) return;
+
+  var labels = binned.map(function(b) { return b.year_bin; });
+
+  // Geographic shifts rate per period
+  if (chartInstances.geoBar) chartInstances.geoBar.destroy();
+  chartInstances.geoBar = new Chart(document.getElementById('geoBarChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Geographic Shifts Rate (%)',
+        data: binned.map(function(b) { return (b.geographic_shifts_rate || 0) * 100; }),
+        backgroundColor: '#48bb78aa',
+        borderColor: '#48bb78',
+        borderWidth: 1,
+        borderRadius: 4
+      }, {
+        label: 'Mean Severity',
+        data: binned.map(function(b) { return (b.geographic_shifts_severity_when_detected || 0) * 100; }),
+        backgroundColor: '#4da6ffaa',
+        borderColor: '#4da6ff',
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw.toFixed(2) + '%'; }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          title: { display: true, text: 'Rate (%)', color: '#718096' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // All detector rates by period (stacked)
+  var topDets = ['ghost_protocols', 'results_delay', 'population_distortion', 'endpoint_softening', 'sponsor_concentration', 'sample_size_decay'];
+  var stackedDatasets = topDets.map(function(d) {
+    return {
+      label: DETECTOR_LABELS[d],
+      data: binned.map(function(b) { return (b[d + '_rate'] || 0) * 100; }),
+      backgroundColor: DETECTOR_COLORS[d] + 'cc',
+      borderColor: DETECTOR_COLORS[d],
+      borderWidth: 1
+    };
+  });
+
+  if (chartInstances.geoPeriod) chartInstances.geoPeriod.destroy();
+  chartInstances.geoPeriod = new Chart(document.getElementById('geoPeriodChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: stackedDatasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 10 } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + '%'; }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: {
+          stacked: true,
+          title: { display: true, text: 'Cumulative Rate (%)', color: '#718096' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+  // Trial volume + severity by period
+  if (chartInstances.geoVolume) chartInstances.geoVolume.destroy();
+  chartInstances.geoVolume = new Chart(document.getElementById('geoVolumeChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Trial Count',
+          data: binned.map(function(b) { return b.n_trials; }),
+          backgroundColor: 'rgba(72,187,120,0.3)',
+          borderColor: '#48bb78',
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y',
+          order: 1
+        },
+        {
+          label: 'Mean Composite Severity',
+          data: binned.map(function(b) { return b.composite_mean || 0; }),
+          type: 'line',
+          borderColor: '#fc8181',
+          backgroundColor: 'rgba(252,129,129,0.1)',
+          borderWidth: 2,
+          pointRadius: 4,
+          tension: 0.3,
+          yAxisID: 'y2',
+          order: 0
+        },
+        {
+          label: 'Mean Flaw Count',
+          data: binned.map(function(b) { return b.mean_flaw_count || 0; }),
+          type: 'line',
+          borderColor: '#4da6ff',
+          backgroundColor: 'rgba(77,166,255,0.1)',
+          borderWidth: 2,
+          pointRadius: 4,
+          tension: 0.3,
+          yAxisID: 'y2',
+          order: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          title: { display: true, text: 'Trial Count', color: '#718096' },
+          beginAtZero: true,
+          position: 'left'
+        },
+        y2: {
+          title: { display: true, text: 'Score', color: '#718096' },
+          beginAtZero: true,
+          position: 'right',
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+/* ---- Boot ---- */
+initTabs();
+loadData();
+
+})();
+</script>
+</body>
+</html>
