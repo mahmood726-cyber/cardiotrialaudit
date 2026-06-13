@@ -1,6 +1,8 @@
 """Tests for cardiology trial filtering and sub-domain tagging."""
 import pandas as pd
 import pytest
+
+from tests.conftest import skip_if_no_aact
 from pipeline.cardio_filter import (
     CV_CONDITION_PATTERNS,
     CV_INTERVENTION_PATTERNS,
@@ -92,6 +94,7 @@ class TestCKDOnlyCondition:
 
 
 class TestFilterPipeline:
+    @skip_if_no_aact
     def test_filter_on_small_sample(self):
         """Run filter on first 1000 studies — should find at least some CV trials."""
         result = filter_cardiology_trials(nrows_studies=1000)

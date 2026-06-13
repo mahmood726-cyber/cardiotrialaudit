@@ -1,9 +1,12 @@
 """Tests for master table construction."""
 import pandas as pd
 import pytest
+
+from tests.conftest import skip_if_no_aact
 from pipeline.master_table import build_master_table
 
 
+@skip_if_no_aact
 def test_master_table_has_required_columns():
     """Master table must have all columns needed by detectors."""
     mt = build_master_table(nrows_studies=200)
@@ -23,11 +26,13 @@ def test_master_table_has_required_columns():
         assert col in mt.columns, f"Missing column: {col}"
 
 
+@skip_if_no_aact
 def test_master_table_one_row_per_trial():
     mt = build_master_table(nrows_studies=500)
     assert mt["nct_id"].is_unique
 
 
+@skip_if_no_aact
 def test_master_table_date_types():
     mt = build_master_table(nrows_studies=100)
     assert pd.api.types.is_datetime64_any_dtype(mt["start_date"])

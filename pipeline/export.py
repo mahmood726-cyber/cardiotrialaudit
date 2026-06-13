@@ -116,10 +116,21 @@ def _sanitize_csv_cell(value):
 
 
 def _sanitize_csv_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply CSV formula injection sanitization to all string columns."""
+    """Apply CSV formula injection sanitization to all string columns.
+
+    Handles both legacy ``object`` columns and the pandas >= 2.x string
+    extension dtypes (``string`` / ``str``). ``_sanitize_csv_cell`` is a no-op
+    for non-string values, so sweeping these column kinds is safe; numeric and
+    datetime columns are skipped because they cannot carry a formula prefix.
+    """
     result = df.copy()
     for col in result.columns:
-        if result[col].dtype == object:
+        dtype = result[col].dtype
+        is_stringy = (
+            dtype == object
+            or pd.api.types.is_string_dtype(dtype)
+        )
+        if is_stringy:
             result[col] = result[col].map(_sanitize_csv_cell)
     return result
 

@@ -5,3 +5,10 @@ __pycache__/
 *.pyc
 .pytest_cache/
 *.egg-info/
+
+# Sentinel / Overmind local scan artifacts
+STUCK_FAILURES.md
+STUCK_FAILURES.jsonl
+sentinel-findings.md
+sentinel-findings.jsonl
+PROGRESS.md
